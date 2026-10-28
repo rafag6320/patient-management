@@ -1,0 +1,9 @@
+**/target/
+**/target-*.log
+**/cdk.out/
+.idea/
+*.iml
+.env
+.env.*
+!.env.example
+.verification/

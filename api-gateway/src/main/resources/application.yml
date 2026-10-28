@@ -1,0 +1,28 @@
+server:
+  port: 4004
+
+auth:
+  service:
+    url: ${AUTH_SERVICE_ADDRESS:http://localhost:4005}
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      server:
+        webflux:
+          routes:
+            - id: patient-service
+              uri: http://patient-service:4000
+              predicates:
+                - Path=/api/patients/**
+              filters:
+                - StripPrefix=1
+                - JwtValidation 
+            - id: auth-service
+              uri: http://auth-service:4005
+              predicates:
+                - Path=/api/auth/**
+              filters:
+                - StripPrefix=2
