@@ -11,8 +11,8 @@
 ## Módulos y límites
 - patient-service: pacientes y coordinación actual del alta.
 - auth-service: usuarios, login y JWT.
-- billing-service: contrato gRPC; implementación actual simulada.
-- analytics-service: consumidor Kafka; procesamiento actual limitado a logs.
+- billing-service: cuentas persistentes propias por gRPC, idempotentes por patientId.
+- analytics-service: consumidor Kafka, deduplicación, total histórico y cuarentena propios.
 - api-gateway: enrutamiento y validación remota del JWT.
 - integration-tests: pruebas HTTP externas.
 - infrastructure: AWS CDK Java y script para LocalStack.

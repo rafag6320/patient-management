@@ -67,7 +67,9 @@ incluye el procesamiento posterior de patient.
 - Patient -> Kafka: PatientEvent Protobuf, topic patient-events.
 - Kafka -> analytics: consumer group analytics-service.
 
-Los contratos Protobuf están duplicados entre módulos.
+Los contratos Protobuf están duplicados entre módulos y se comparan automáticamente.
+Patient utiliza la fábrica Kafka autoconfigurada por Spring Boot para aplicar
+realmente los límites, acks y TLS/SCRAM declarados en sus propiedades.
 
 ## Validación y conflictos de pacientes (R06)
 
@@ -168,8 +170,9 @@ La autorización sólo protege gateway; no hay mTLS HTTP/gRPC interno. No se
 sincronizan actualizaciones/eliminaciones con billing ni analytics. La retención
 física de snapshots requiere una política posterior antes de cualquier purga.
 
-El workflow CI está configurado; su ejecución real en GitHub se registra por
-separado de los tests locales. AWS continúa siendo un candidato sin desplegar.
+El workflow CI se ejecutó y aprobó en GitHub para d197f7b; sus reportes se conservan
+como artefacto. AWS continúa siendo un candidato sin desplegar. Evidencia en
+[verification-r11-r19.md](verification-r11-r19.md).
 
 ## Pruebas locales
 

@@ -241,7 +241,8 @@ despliegues externos.
   No se reconcilian automáticamente pacientes históricos.
 - Validación: inspección estática y revisión documental en R10, registradas en
   [verification-r10.md](verification-r10.md). Los escenarios SQL/RPC/Kafka/HTTP,
-  concurrencia y reinicios definidos en la especificación se probarán en R11–R13.
+  concurrencia y reinicios se comprobaron posteriormente en R11–R19; evidencia
+  en [verification-r11-r19.md](verification-r11-r19.md).
 
 ### D19 — Registro de operación y outbox local (R12/P05)
 
@@ -314,11 +315,12 @@ despliegues externos.
 
 | ID | Propuesta | Motivo y condición |
 |---|---|---|
-| P10 | Preparar configuración, red y secretos para AWS. | El stack actual contiene supuestos del entorno Docker local. |
+| P10 | Aprobar la ejecución del candidato AWS preparado en D22. | Preparación completada; faltan datos del entorno y autorización para desplegar. |
 
 ## Decisiones abiertas
 - ¿Qué política de retención/purga deben tener los snapshots durables?
-- ¿Actualizar y eliminar pacientes requiere eventos?
+- ¿Qué necesidades futuras requerirían eventos PUT/DELETE? Esta entrega mantiene
+  sólo PATIENT_CREATED, según el alcance aprobado.
 - ¿Qué cuenta/región, presupuesto y parámetros se aprobarán para desplegar AWS?
 
 ## Formato de futuras decisiones

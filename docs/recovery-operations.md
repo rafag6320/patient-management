@@ -123,5 +123,5 @@ por defecto compila sus tests, sin contactar localhost ni usar un datasource imp
 
 `.github/workflows/verify.yml` ejecuta estos grupos en Ubuntu/Java 21/Node 22,
 construye las cinco imágenes y conserva XML/logs/templates incluso si hay fallos.
-La configuración local no demuestra que ya se ejecutó un job en GitHub: registrar
-por separado el enlace y el resultado cuando se publique y ejecute la rama.
+La ejecución real en GitHub se aprobó para d197f7b. Enlace y evidencia se registran
+por separado de los tests locales en verification-r11-r19.md.

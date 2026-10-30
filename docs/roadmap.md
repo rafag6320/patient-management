@@ -13,10 +13,10 @@ R08 está **completada**, con evidencia en [verification-r08.md](verification-r0
 R09 está **completada**, con evidencia en [verification-r09.md](verification-r09.md).
 R10 está **completada**, con semántica aprobada por el usuario en
 [patient-registration-semantics.md](patient-registration-semantics.md).
-R11–R15 y R17 tienen implementación y evidencia local; R16 tiene workflow
-preparado y su ejecución en GitHub pendiente. R18–R19 tienen infraestructura
-revisable y verificación local, pendientes del cierre integral de CI y de los
-pasos externos explícitos. Evidencia en [verification-r11-r19.md](verification-r11-r19.md).
+R11–R19 están **completadas dentro de su alcance acordado**: implementación,
+pruebas, CI real aprobada y preparación AWS revisable. La publicación en ECR y el
+despliegue AWS siguen pendientes de autorización explícita y valores del entorno.
+Evidencia en [verification-r11-r19.md](verification-r11-r19.md).
 La existencia de clases, artefactos
 compilados o reportes antiguos no demuestra que una tarea esté completa.
 
@@ -262,9 +262,9 @@ La complejidad no representa una estimación de calendario.
   billing confirmado antes del 200, evento durable con entrega posterior,
   estados internos recuperables y clave de idempotencia opcional. Incluye
   explícitamente las extensiones HTTP 502/503/409 y sus condiciones. El usuario
-  aprobó la propuesta completa. R10 cierra la definición: no se modificó código
-  ni bases, y las garantías todavía no están implementadas. R11–R12 conservan
-  su alcance de implementación y R12 requiere aprobar el patrón durable.
+  aprobó la propuesta completa. R10 cerró la definición sin modificar código
+  ni bases. La implementación y la aprobación del patrón durable se completaron
+  posteriormente en R11–R12, con evidencia nueva.
   Evidencia y límites en [verification-r10.md](verification-r10.md).
 
 ### R11 — Acotar y probar la llamada gRPC
@@ -356,18 +356,18 @@ con billing utiliza su idempotencia por patientId; Kafka admite reenvíos.
 
 ### R16 — Incorporar integración continua
 
-- **Estado:** en curso; implementación/preparación local verificada, cierre externo pendiente.
+- **Estado:** completada; GitHub Actions real aprobada.
 - **Objetivo:** automatizar la evidencia necesaria para aceptar cambios.
 - **Dependencias:** R02 y R03 para iniciar; R15 para completar la verificación integral.
 - **Complejidad:** media.
 - **Criterios de aceptación:**
   - [x] Disponer de un comando documentado para las verificaciones del proyecto.
-  - [ ] Ejecutar compilación y tests aislados en CI (workflow preparado; job GitHub pendiente).
+  - [x] Ejecutar compilación y tests aislados en CI.
   - [x] Incorporar los tests de integración conforme estén disponibles.
   - [x] Construir las imágenes y conservar reportes de las verificaciones.
   - [x] Hacer visible cualquier fallo y evitar presentar un cambio como verificado cuando sus checks fallan.
 
-- **Evidencia local (30/10/2026):** Workflow con acciones fijadas por SHA, Java 21/Node 22, suite aislada, PostgreSQL, síntesis, LocalStack acotado y construcción/aceptación Compose. Comandos equivalentes ejecutados localmente; reportes y fallos conservados. El repositorio remoto sigue vacío y público: falta publicar la rama y verificar el job real en GitHub, sin atribuirle resultados locales.
+- **Evidencia local (30/10/2026):** Workflow con acciones fijadas por SHA, Java 21/Node 22, suite aislada, PostgreSQL, síntesis, LocalStack acotado y construcción/aceptación Compose. Comandos ejecutados localmente y en GitHub: ejecución 41115973456 aprobada para el código d197f7b, con artefacto verification-reports conservado. Rama codex/roadmap-r11-r19 publicada con autorización del usuario.
   Comandos, archivos, resultados y límites en [verification-r11-r19.md](verification-r11-r19.md).
 
 ### R17 — Añadir observabilidad y autorización acordadas
@@ -390,7 +390,7 @@ con billing utiliza su idempotencia por patientId; Kafka admite reenvíos.
 
 ### R18 — Corregir y comprobar CDK y LocalStack
 
-- **Estado:** en curso; implementación/preparación local verificada, cierre externo pendiente.
+- **Estado:** completada; síntesis y emulación acotada verificadas localmente y en CI.
 - **Objetivo:** disponer de infraestructura sintetizable y un alcance de emulación comprobado.
 - **Dependencias:** R04, R07, R09, R16, R17.
 - **Complejidad:** alta.
@@ -403,12 +403,12 @@ con billing utiliza su idempotencia por patientId; Kafka admite reenvíos.
   - [x] Fijar versión y procedimiento de inicio de LocalStack.
   - [x] Documentar qué recursos se verificaron en LocalStack y qué comportamiento requiere validación en AWS.
 
-- **Evidencia local (30/10/2026):** Java/CDK reproducibles, cinco tests de template y síntesis de registro ECR, candidato AWS y emulación. Cuatro bases privadas, DNS/puertos/JDBC corregidos, TLS/SCRAM, secretos por referencias y digests. LocalStack 4.14.0 probó sólo CloudFormation/Secrets Manager ficticios en contenedor propio. Dependencia formal R16 pendiente de ejecución remota; no se afirma despliegue AWS.
+- **Evidencia local (30/10/2026):** Java/CDK reproducibles, cinco tests de template y síntesis de registro ECR, candidato AWS y emulación. Cuatro bases privadas, DNS/puertos/JDBC corregidos, TLS/SCRAM, secretos por referencias y digests. LocalStack 4.14.0 probó sólo CloudFormation/Secrets Manager ficticios en contenedor propio. R16 aprobó también estas verificaciones en CI; no se afirma despliegue AWS.
   Comandos, archivos, resultados y límites en [verification-r11-r19.md](verification-r11-r19.md).
 
 ### R19 — Preparar el primer despliegue AWS
 
-- **Estado:** en curso; implementación/preparación local verificada, cierre externo pendiente.
+- **Estado:** completada como preparación; ejecución AWS pendiente de aprobación explícita.
 - **Objetivo:** dejar un despliegue concreto y revisable, pendiente de aprobación para ejecutarlo.
 - **Dependencias:** R15, R16, R17, R18.
 - **Complejidad:** alta.
@@ -421,7 +421,7 @@ con billing utiliza su idempotencia por patientId; Kafka admite reenvíos.
   - [x] Disponer del diff de infraestructura y del procedimiento para revisión.
   - [x] Mantener la ejecución del despliegue externo pendiente de aprobación explícita.
 
-- **Evidencia local (30/10/2026):** Preparadas cinco imágenes locales versionadas, manifiesto, templates, revisión/diff local y procedimientos de publicación, TLS, backups, migración y recuperación en aws-deployment.md. No se publicó ni desplegó AWS. Faltan cierre remoto R16 y selección/aprobación de cuenta, región, certificado, secretos, digests publicados y presupuesto para ejecutar el despliegue.
+- **Evidencia local (30/10/2026):** Preparadas cinco imágenes locales versionadas, manifiesto, templates, revisión/diff local y procedimientos de publicación, TLS, backups, migración y recuperación en aws-deployment.md. No se publicó ni desplegó AWS. R16 aprobada. Para ejecutar el despliegue falta completar y aprobar cuenta, región, certificado, secretos, digests publicados y presupuesto; la tarea R19 prepara esa revisión sin ejecutarla.
   Comandos, archivos, resultados y límites en [verification-r11-r19.md](verification-r11-r19.md).
 
 ## Orden recomendado y decisiones pendientes
@@ -435,7 +435,7 @@ con billing utiliza su idempotencia por patientId; Kafka admite reenvíos.
 
 D18–D21 resolvieron semántica del alta, recuperación, resultado de analytics y
 roles. Se conserva el alcance aprobado sin eventos PUT/DELETE. Permanecen abiertos
-la política de purga de snapshots, la publicación/ejecución de CI y la selección
+la política de purga de snapshots y la selección
 y aprobación del entorno AWS. La emulación se limita a lo efectivamente probado.
 
 ## Definición de tarea completada
