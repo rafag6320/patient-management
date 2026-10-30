@@ -18,6 +18,10 @@ class BillingServiceGrpcClientTest {
     private final java.util.concurrent.atomic.AtomicReference<String> observedCorrelation=new java.util.concurrent.atomic.AtomicReference<>();
     private void call(Consumer<StreamObserver<BillingResponse>> handler,
             Consumer<BillingServiceGrpcClient> assertions) throws Exception {
+        callWithDeadline(Duration.ofSeconds(2),handler,assertions);
+    }
+    private void callWithDeadline(Duration deadline,Consumer<StreamObserver<BillingResponse>> handler,
+            Consumer<BillingServiceGrpcClient> assertions) throws Exception {
         Server server = NettyServerBuilder.forPort(0).intercept(new ServerInterceptor() {
             @Override public <Q,S> ServerCall.Listener<Q> interceptCall(ServerCall<Q,S> call,Metadata headers,ServerCallHandler<Q,S> next) {
                 observedCorrelation.set(headers.get(Metadata.Key.of("correlation-id",Metadata.ASCII_STRING_MARSHALLER)));return next.startCall(call,headers);
@@ -28,7 +32,7 @@ class BillingServiceGrpcClientTest {
             }
         }).build().start();
         ManagedChannel channel = ManagedChannelBuilder.forAddress("127.0.0.1", server.getPort()).usePlaintext().disableRetry().build();
-        try (var client = new BillingServiceGrpcClient(channel, Duration.ofMillis(400))) {
+        try (var client = new BillingServiceGrpcClient(channel, deadline)) {
             assertions.accept(client);
         } finally { server.shutdownNow().awaitTermination(3, TimeUnit.SECONDS); }
         assertTrue(channel.isTerminated(), "Client must close its real channel");
@@ -49,7 +53,7 @@ class BillingServiceGrpcClientTest {
     }
 
     @Test void unresponsiveServerIsBoundedAndUncertain() throws Exception {
-        call(observer -> {}, client -> {
+        callWithDeadline(Duration.ofMillis(400),observer -> {}, client -> {
             long start = System.nanoTime();
             var ex = assertThrows(BillingCallException.class, () -> client.createBillingAccount("p", "n", "e"));
             assertEquals(BillingCallException.Kind.UNCERTAIN, ex.kind());

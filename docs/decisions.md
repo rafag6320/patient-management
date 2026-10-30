@@ -273,6 +273,9 @@ despliegues externos.
 - Mensajes inválidos tienen cuarentena durable con metadatos/hash y sin payload;
   fallos SQL se propagan para redelivery. Registro y efecto de conteo corresponden
   a una misma fila: no hay contador separado susceptible a incremento duplicado.
+- Patient usa spring-boot-starter-kafka para aplicar realmente propiedades del
+  productor, sin la fábrica manual que descartaba límites y TLS/SCRAM. La
+  configuración efectiva local/AWS y el contexto completo tienen tests específicos.
 - Dependencias nuevas JDBC/Flyway/PostgreSQL gestionadas por Boot y H2 sólo test.
   Base/volumen analytics de desarrollo propios, sin tocar cuentas existentes.
 - Validación: concurrencia y fallos SQL con H2/PostgreSQL, Kafka real con duplicados

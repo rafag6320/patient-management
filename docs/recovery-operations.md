@@ -33,7 +33,8 @@ ser sobrescrito. Las redes se invocan fuera de transacciones SQL.
   y RESOURCE_EXHAUSTED se recuperan conservando el mismo patientId. Resultados
   inciertos tienen REGISTRATION_UNCERTAIN_BUDGET=5 antes de requerir revisión.
 - Kafka: clave patientId, snapshot inicial inmutable, acks=all, idempotencia de
-  productor y límite de confirmación de 6s. Una confirmación perdida permite
+  productor, espera de metadatos hasta 1s y confirmación hasta 6s. Spring Boot
+  configura la fábrica efectiva y aplica también TLS/SCRAM en aws. Una confirmación perdida permite
   reenvío; la deduplicación de analytics evita sumar dos veces.
 - REGISTRATION_DISPATCHER_ENABLED=false pausa el worker; no borra trabajo.
   REGISTRATION_DISPATCHER_DELAY_MS controla el intervalo, 1000ms por defecto.
