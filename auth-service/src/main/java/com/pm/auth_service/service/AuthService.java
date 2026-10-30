@@ -29,11 +29,16 @@ public class AuthService {
         return token;
     }
 
+    public Optional<List<String>> verifiedRoles(String token) {
+        try { return Optional.of(jwtTokenProvider.verifiedRoles(token)); }
+        catch(JwtException | IllegalArgumentException ex) { return Optional.empty(); }
+    }
+
     public boolean validateToken(String token) {
         try {
             jwtTokenProvider.validateToken(token);
             return true;
-        } catch (JwtException e) {
+        } catch (JwtException | IllegalArgumentException e) {
             return false;
         }
     }

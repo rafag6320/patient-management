@@ -27,7 +27,9 @@
 		<url/>
 	</scm>
 	<properties>
+        <pm.build.directory>${project.basedir}/target</pm.build.directory>
 		<java.version>21</java.version>
+        <protobuf-java.version>4.29.1</protobuf-java.version>
 		<grpc.version>1.83.1</grpc.version>
 	</properties>
 	<dependencyManagement>
@@ -42,6 +44,27 @@
 		</dependencies>
 	</dependencyManagement>
 	<dependencies>
+        <!-- R07: versiones gestionadas por Spring Boot. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-flyway</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-database-postgresql</artifactId>
+        </dependency>
+
+        <!-- Disponibilidad local: Compose consulta solamente /actuator/health. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>test</scope>
+        </dependency>
+
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-data-jpa</artifactId>
@@ -86,10 +109,6 @@
     		<artifactId>lombok</artifactId>
     		<optional>true</optional>
 		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-h2console</artifactId>
-		</dependency>
 		<!-- gRPC client dependencies -->
 		<dependency>
 			<groupId>net.devh</groupId>
@@ -111,7 +130,7 @@
 		<dependency>
 			<groupId>com.google.protobuf</groupId>
 			<artifactId>protobuf-java</artifactId>
-			<version>4.29.1</version>
+			<version>${protobuf-java.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.kafka</groupId>
@@ -120,6 +139,7 @@
 	</dependencies>
 
 	<build>
+        <directory>${pm.build.directory}</directory>
 		<extensions>
 			<extension>
 				<groupId>kr.motd.maven</groupId>
@@ -128,6 +148,44 @@
 			</extension>
 		</extensions>
 		<plugins>
+            <plugin>
+                <groupId>org.flywaydb</groupId>
+                <artifactId>flyway-maven-plugin</artifactId>
+                <configuration>
+                    <url>${env.PM_MIGRATION_URL}</url>
+                    <user>${env.PM_MIGRATION_USER}</user>
+                    <password>${env.PM_MIGRATION_PASSWORD}</password>
+                    <baselineVersion>1</baselineVersion>
+                    <baselineOnMigrate>false</baselineOnMigrate>
+                    <cleanDisabled>true</cleanDisabled>
+                    <locations><location>filesystem:${project.basedir}/src/main/resources/db/migration</location></locations>
+                </configuration>
+                <dependencies>
+                    <dependency>
+                        <groupId>org.flywaydb</groupId>
+                        <artifactId>flyway-database-postgresql</artifactId>
+                        <version>${flyway.version}</version>
+                    </dependency>
+                    <dependency>
+                        <groupId>org.postgresql</groupId>
+                        <artifactId>postgresql</artifactId>
+                        <version>${postgresql.version}</version>
+                    </dependency>
+                </dependencies>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <version>3.6.2</version>
+                <executions><execution><id>java-21</id><goals><goal>enforce</goal></goals>
+                    <configuration><rules>
+                        <requireJavaVersion><version>[21,22)</version></requireJavaVersion>
+                        <requireMavenVersion><version>[3.9.16,3.9.17)</version></requireMavenVersion>
+                    </rules></configuration>
+                </execution></executions>
+            </plugin>
+
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
@@ -137,7 +195,7 @@
 				<artifactId>protobuf-maven-plugin</artifactId>
 				<version>0.6.1</version>
 				<configuration>
-					<protocArtifact>com.google.protobuf:protoc:3.25.5:exe:${os.detected.classifier}</protocArtifact>
+					<protocArtifact>com.google.protobuf:protoc:${protobuf-java.version}:exe:${os.detected.classifier}</protocArtifact>
 					<pluginId>grpc-java</pluginId>
 					<pluginArtifact>io.grpc:protoc-gen-grpc-java:${grpc.version}:exe:${os.detected.classifier}</pluginArtifact>
 				</configuration>
@@ -152,5 +210,19 @@
 			</plugin>
 		</plugins>
 	</build>
+
+
+    <profiles>
+        <profile>
+            <id>isolated-tests</id>
+            <build><plugins><plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <executions><execution><goals>
+                    <goal>integration-test</goal><goal>verify</goal>
+                </goals></execution></executions>
+            </plugin></plugins></build>
+        </profile>
+    </profiles>
 
 </project>

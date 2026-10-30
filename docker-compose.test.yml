@@ -1,0 +1,8 @@
+# Usar sólo con los proyectos de prueba admitidos por scripts/compose-smoke.ps1.
+services:
+  patient-service:
+    ports:
+      - "14000:4000"
+  billing-service:
+    ports:
+      - "19001:9001"

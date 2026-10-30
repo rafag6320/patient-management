@@ -31,6 +31,13 @@ public class JwtUtil {
                 .compact();
     }
 
+    public List<String> verifiedRoles(String token) {
+        Object roles=Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(token).getPayload().get("roles");
+        if(!(roles instanceof List<?> list)) { return List.of(); }
+        return list.stream().filter(String.class::isInstance).map(String.class::cast)
+            .filter(role->role.matches("[A-Z_]{1,32}")).distinct().toList();
+    }
+
     public void validateToken(String token) throws JwtException {
         Jwts.parser()
                 .verifyWith(secretKey)

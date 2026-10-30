@@ -1,0 +1,7 @@
+# Sólo para scripts/verify-auth-compose.ps1, proyectos de prueba pm-r05-test/pm-r08-test.
+services:
+  api-gateway:
+    environment:
+      ANALYTICS_SERVICE_ADDRESS: http://analytics-service:4002
+      SPRING_PROFILES_ACTIVE: ${R05_GATEWAY_PROFILE:-default}
+      PATIENT_SERVICE_ADDRESS: http://patient-service:4000

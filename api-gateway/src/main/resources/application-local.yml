@@ -1,0 +1,10 @@
+auth:
+  service:
+    url: ${AUTH_SERVICE_ADDRESS:http://localhost:4005}
+patient:
+  service:
+    url: ${PATIENT_SERVICE_ADDRESS:http://localhost:4000}
+
+analytics:
+  service:
+    url: ${ANALYTICS_SERVICE_ADDRESS:http://localhost:4002}

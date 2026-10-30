@@ -1,24 +1,7 @@
-server:
-  port: 4004
-
-spring:
-  application:
-    name: api-gateway
-  cloud:
-    gateway:
-      server:
-        webflux:
-          routes:
-            - id: patient-service
-              uri: http://host.docker.internal:4000
-              predicates:
-                - Path=/api/patients/**
-              filters:
-                - StripPrefix=1
-                - JwtValidation 
-            - id: auth-service
-              uri: http://host.docker.internal:4005
-              predicates:
-                - Path=/api/auth/**
-              filters:
-                - StripPrefix=1
+# Rutas heredadas; prod requiere destinos explicitos.
+auth:
+  service:
+    url: ${AUTH_SERVICE_ADDRESS}
+patient:
+  service:
+    url: ${PATIENT_SERVICE_ADDRESS}

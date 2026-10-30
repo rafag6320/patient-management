@@ -1,7 +1,12 @@
 package com.pm.billing_service.grpc;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.pm.billing_service.entity.BillingAccount;
+import com.pm.billing_service.service.BillingAccountService;
+import com.pm.billing_service.service.InvalidBillingRequestException;
+import org.springframework.dao.DataAccessResourceFailureException;
+import org.springframework.dao.TransientDataAccessException;
+import org.springframework.transaction.CannotCreateTransactionException;
+import io.grpc.Status;
 
 import billing.BillingRequest;
 import billing.BillingResponse;
@@ -11,21 +16,27 @@ import net.devh.boot.grpc.server.service.GrpcService;
 
 @GrpcService
 public class BillingGrpcService extends BillingServiceGrpc.BillingServiceImplBase {
-    private static final Logger log = LoggerFactory.getLogger(BillingGrpcService.class);
+    private final BillingAccountService accounts;
+
+    public BillingGrpcService(BillingAccountService accounts) { this.accounts=accounts; }
     
     @Override
     public void createBillingAccount(BillingRequest billingRequest,
         StreamObserver<BillingResponse> responseObserver) {
-            log.info("Creating billing account for request: {}", billingRequest.toString());
-        
-            // Business logic to create a billing account would go here. For now, we will just return a success response.
-
-            BillingResponse response = BillingResponse.newBuilder()
-                .setAccountId("12345")
-                .setSuccess(true)
-                .build();
-
-                responseObserver.onNext(response);
-                responseObserver.onCompleted();
+        BillingAccount account;
+        try {
+            account=accounts.getOrCreate(billingRequest.getPatientId(),billingRequest.getName(),billingRequest.getEmail());
+        } catch (InvalidBillingRequestException ex) {
+            responseObserver.onError(Status.INVALID_ARGUMENT.withDescription("Invalid billing account request").asRuntimeException());
+            return;
+        } catch (DataAccessResourceFailureException | TransientDataAccessException | CannotCreateTransactionException ex) {
+            responseObserver.onError(Status.UNAVAILABLE.withDescription("Billing storage unavailable").asRuntimeException());
+            return;
+        } catch (RuntimeException ex) {
+            responseObserver.onError(Status.INTERNAL.withDescription("Billing account could not be created").asRuntimeException());
+            return;
+        }
+        responseObserver.onNext(BillingResponse.newBuilder().setAccountId(account.getId().toString()).setSuccess(true).build());
+        responseObserver.onCompleted();
         }
 }

@@ -1,0 +1,6 @@
+**/target
+**/.git
+**/target-*.log
+**/cdk.out
+.verification
+.env*

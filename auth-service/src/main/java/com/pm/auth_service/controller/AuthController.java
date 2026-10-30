@@ -38,6 +38,8 @@ public class AuthController {
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
-        return authService.validateToken(authHeader.substring(7)) ? ResponseEntity.ok().build() : ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        var roles=authService.verifiedRoles(authHeader.substring(7));
+        return roles.isPresent() ? ResponseEntity.ok().header("X-Validated-Roles",String.join(",",roles.get())).build()
+            : ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
     }
 }

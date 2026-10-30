@@ -37,8 +37,9 @@ public class PatientController {
     }
 
     @PostMapping
-    public ResponseEntity<PatientResponseDTO> createPatient(@Validated({Default.class, CreatePatientValidationGroup.class}) @RequestBody PatientRequestDTO patientRequestDTO) {
-        PatientResponseDTO createdPatient = patientService.createPatient(patientRequestDTO);
+    public ResponseEntity<PatientResponseDTO> createPatient(@Validated({Default.class, CreatePatientValidationGroup.class}) @RequestBody PatientRequestDTO patientRequestDTO,
+            @org.springframework.web.bind.annotation.RequestHeader(value="Idempotency-Key",required=false) String key) {
+        PatientResponseDTO createdPatient = patientService.createPatient(patientRequestDTO,key);
         return ResponseEntity.ok().body(createdPatient);
     }
 

@@ -28,10 +28,14 @@ public class KafkaProducer {
                 .setEventType("PATIENT_CREATED")
                 .build();
         try {
-            kafkaTemplate.send("patient-events", event.toByteArray()).get(10, TimeUnit.SECONDS);
+            var record=new org.apache.kafka.clients.producer.ProducerRecord<String,byte[]>("patient-events",patient.getId().toString(),event.toByteArray());
+            String correlation=org.slf4j.MDC.get("correlationId");
+            if(correlation!=null) { record.headers().add("correlation-id",correlation.getBytes(java.nio.charset.StandardCharsets.US_ASCII)); }
+            kafkaTemplate.send(record).get(6, TimeUnit.SECONDS);
             log.info("Kafka event sent to topic patient-events");
         } catch (Exception e) {
-            log.error("Failed to send event to Kafka: {}", e.getMessage());
+            if(e instanceof InterruptedException) { Thread.currentThread().interrupt(); }
+            log.warn("Kafka publication unconfirmed; durable work will be retried");
             throw new IllegalStateException("Kafka event could not be sent", e);
         }
     } 

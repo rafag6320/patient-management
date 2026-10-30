@@ -1,0 +1,6 @@
+# Ports are only exposed on loopback, for the isolated acceptance project.
+services:
+  patient-service:
+    ports: ["127.0.0.1:34000:4000"]
+  billing-service:
+    ports: ["127.0.0.1:39001:9001"]

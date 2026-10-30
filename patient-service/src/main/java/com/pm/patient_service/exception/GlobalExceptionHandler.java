@@ -13,6 +13,21 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 public class GlobalExceptionHandler {
     private static final Logger logger = org.slf4j.LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
+    @ExceptionHandler(com.pm.patient_service.registration.RegistrationException.class)
+    public ResponseEntity<Map<String,String>> registrationFailure(com.pm.patient_service.registration.RegistrationException ex) {
+        return ResponseEntity.status(ex.status()).body(Map.of("error",ex.getMessage()));
+    }
+
+    @ExceptionHandler({org.springframework.dao.DataAccessException.class,org.springframework.transaction.TransactionException.class})
+    public ResponseEntity<Map<String,String>> storageFailure(RuntimeException ex) {
+        return ResponseEntity.status(503).body(Map.of("error","Storage unavailable; registration may exist. Retry with the same Idempotency-Key"));
+    }
+
+    @ExceptionHandler(com.pm.patient_service.grpc.BillingCallException.class)
+    public ResponseEntity<Map<String,String>> billingFailure(com.pm.patient_service.grpc.BillingCallException ex) {
+        return ResponseEntity.status(ex.httpStatus()).body(Map.of("error", ex.getMessage()));
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, String>> handleValidationExceptions(MethodArgumentNotValidException ex) {
         Map<String, String> errors = new HashMap<>();
@@ -21,11 +36,11 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(errors);
     }
 
-    @ExceptionHandler(EmailAlreadyExistsException.class)
+    @ExceptionHandler({EmailAlreadyExistsException.class, PatientAlreadyExistsException.class})
     public ResponseEntity<Map<String, String>> handleEmailAlreadyExistsException(
-        EmailAlreadyExistsException ex) {
+        RuntimeException ex) {
          
-        logger.warn("EmailAlreadyExistsException: {}", ex.getMessage());
+        logger.warn("Patient uniqueness conflict");
         Map<String, String> error = new HashMap<>();
         error.put("error", ex.getMessage());
         return ResponseEntity.badRequest().body(error);

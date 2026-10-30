@@ -1,9 +1,14 @@
 services:
 
   patient-service:
-    build: ./patient-service
-    container_name: patient-service
+    mem_limit: 640m
+    cpus: 1.0
+    build:
+      context: .
+      dockerfile: patient-service/Dockerfile
     environment:
+      SPRING_PROFILES_ACTIVE: docker
+      JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=65.0 -XX:+ExitOnOutOfMemoryError
       SPRING_DATASOURCE_URL: jdbc:postgresql://patient-db:5432/patient_db
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: postgres
@@ -13,15 +18,26 @@ services:
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
 
     depends_on:
-      - patient-db
-      - kafka
+      patient-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "java", "-cp", "/probe", "ReadinessCheck", "http://localhost:4000/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      start_period: 30s
+      retries: 12
 
   auth-service:
-    build: ./auth-service
-    container_name: auth-service
+    mem_limit: 640m
+    cpus: 1.0
+    build:
+      context: .
+      dockerfile: auth-service/Dockerfile
     ports:
-      - "4005:4005"
+      - "${AUTH_HOST_PORT:-4005}:4005"
     environment:
+      SPRING_PROFILES_ACTIVE: docker
+      JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=65.0 -XX:+ExitOnOutOfMemoryError
       SPRING_DATASOURCE_URL: jdbc:postgresql://auth-db:5432/auth_db
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: postgres
@@ -31,64 +47,116 @@ services:
     depends_on:
       auth-db:
         condition: service_healthy
-      
+    healthcheck:
+      test: ["CMD", "java", "-cp", "/probe", "ReadinessCheck", "http://localhost:4005/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      start_period: 30s
+      retries: 12
+
   billing-service:
+    mem_limit: 640m
+    cpus: 1.0
     build:
-      context: ./billing-service
-      dockerfile: Dockerfile
-    container_name: billing-service
+      context: .
+      dockerfile: billing-service/Dockerfile
     environment:
+      SPRING_PROFILES_ACTIVE: docker
+      JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=65.0 -XX:+ExitOnOutOfMemoryError
       SERVER_PORT: 4001
       GRPC_SERVER_PORT: 9001
+      SPRING_DATASOURCE_URL: jdbc:postgresql://billing-db:5432/billing_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+    depends_on:
+      billing-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "java", "-cp", "/probe", "ReadinessCheck", "http://localhost:4001/actuator/health", "localhost", "9001"]
+      interval: 10s
+      timeout: 5s
+      start_period: 30s
+      retries: 12
 
   analytics-service:
+    mem_limit: 640m
+    cpus: 1.0
     build:
-      context: ./analytics-service
-      dockerfile: Dockerfile
-    container_name: analytics-service
+      context: .
+      dockerfile: analytics-service/Dockerfile
     ports:
-      - "4002:4002"
+      - "${ANALYTICS_HOST_PORT:-4002}:4002"
     environment:
+      SPRING_PROFILES_ACTIVE: docker
+      JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=65.0 -XX:+ExitOnOutOfMemoryError
       SERVER_PORT: 4002
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      SPRING_DATASOURCE_URL: jdbc:postgresql://analytics-db:5432/analytics_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
 
     depends_on:
-      - kafka
+      analytics-db:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "java", "-cp", "/probe", "ReadinessCheck", "http://localhost:4002/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      start_period: 30s
+      retries: 12
 
   api-gateway:
-    build: ./api-gateway
-    container_name: api-gateway
+    mem_limit: 640m
+    cpus: 1.0
+    build:
+      context: .
+      dockerfile: api-gateway/Dockerfile
     ports:
-      - "4004:4004"
+      - "${GATEWAY_HOST_PORT:-4004}:4004"
     environment:
+      SPRING_PROFILES_ACTIVE: docker
+      JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=65.0 -XX:+ExitOnOutOfMemoryError
       SERVER_PORT: 4004
       AUTH_SERVICE_ADDRESS: http://auth-service:4005
 
     depends_on:
-      - patient-service
-      - auth-service
+      patient-service:
+        condition: service_healthy
+      auth-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "java", "-cp", "/probe", "ReadinessCheck", "http://localhost:4004/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      start_period: 30s
+      retries: 12
 
   patient-db:
     image: postgres:16
-    container_name: patient-db
     environment:
       POSTGRES_DB: patient_db
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     ports:
-      - "5433:5432"
+      - "${PATIENT_DB_HOST_PORT:-5433}:5432"
     volumes:
       - patient-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d patient_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   auth-db:
     image: postgres:16
-    container_name: auth-db
     environment:
       POSTGRES_DB: auth_db
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     ports:
-      - "5434:5432"
+      - "${AUTH_DB_HOST_PORT:-5434}:5432"
     volumes:
       - auth-db-data:/var/lib/postgresql/data
     healthcheck:
@@ -97,18 +165,53 @@ services:
       timeout: 5s
       retries: 10
 
-  kafka:
-    image: apache/kafka:4.0.0
-    container_name: kafka
-    ports:
-      - "9094:9094"
+  billing-db:
+    image: postgres:16
     environment:
+      POSTGRES_DB: billing_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "${BILLING_DB_HOST_PORT:-5435}:5432"
+    volumes:
+      - billing-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d billing_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  analytics-db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: analytics_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "${ANALYTICS_DB_HOST_PORT:-5436}:5432"
+    volumes:
+      - analytics-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d analytics_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  kafka:
+    mem_limit: 1g
+    cpus: 1.0
+    image: apache/kafka:4.0.0
+    ports:
+      - "${KAFKA_HOST_PORT:-9094}:9094"
+    environment:
+      KAFKA_HEAP_OPTS: -Xms256m -Xmx512m
       # KRaft
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
       # Listeners
       KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:9094
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,EXTERNAL://localhost:9094
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,EXTERNAL://localhost:${KAFKA_HOST_PORT:-9094}
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
@@ -121,9 +224,16 @@ services:
       KAFKA_NUM_PARTITIONS: 3
     volumes:
       - kafka-data:/var/lib/kafka/data
-
+    healthcheck:
+      test: ["CMD", "/opt/kafka/bin/kafka-topics.sh", "--bootstrap-server", "localhost:9092", "--list"]
+      interval: 10s
+      timeout: 10s
+      start_period: 20s
+      retries: 12
 
 volumes:
   patient-db-data:
   auth-db-data:
+  billing-db-data:
+  analytics-db-data:
   kafka-data:

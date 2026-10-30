@@ -3,7 +3,17 @@ server:
 
 auth:
   service:
-    url: ${AUTH_SERVICE_ADDRESS:http://localhost:4005}
+    url: ${AUTH_SERVICE_ADDRESS}
+    validation-timeout: ${AUTH_VALIDATION_TIMEOUT:2s}
+    proxy-timeout: ${AUTH_PROXY_TIMEOUT:2s}
+
+patient:
+  service:
+    url: ${PATIENT_SERVICE_ADDRESS}
+
+analytics:
+  service:
+    url: ${ANALYTICS_SERVICE_ADDRESS}
 
 spring:
   application:
@@ -14,15 +24,26 @@ spring:
         webflux:
           routes:
             - id: patient-service
-              uri: http://patient-service:4000
+              uri: ${patient.service.url}
               predicates:
                 - Path=/api/patients/**
               filters:
                 - StripPrefix=1
-                - JwtValidation 
+                - JwtValidation
+                - UpstreamAvailability
             - id: auth-service
-              uri: http://auth-service:4005
+              uri: ${auth.service.url}
               predicates:
                 - Path=/api/auth/**
               filters:
                 - StripPrefix=2
+                - AuthProxy
+            - id: analytics-service
+              uri: ${analytics.service.url}
+              predicates:
+                - Path=/api/analytics/summary
+                - Method=GET
+              filters:
+                - StripPrefix=1
+                - JwtValidation
+                - UpstreamAvailability
