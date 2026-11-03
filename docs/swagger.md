@@ -15,8 +15,6 @@ El gateway sirve la UI aunque los destinos no estén disponibles; las llamadas
 de negocio requieren sus servicios. Para construir y arrancar todo el sistema,
 usar `docker compose up -d --build`.
 Si hay volúmenes anteriores a Flyway, seguir primero [migrations.md](migrations.md).
-El diagnóstico y la adopción de los volúmenes de esta instalación están en
-[compose-troubleshooting.md](compose-troubleshooting.md).
 Los requisitos, perfiles y variables están en [local-development.md](local-development.md)
 y [environments.md](environments.md). Si se cambia `GATEWAY_HOST_PORT`, sustituir
 4004 por ese puerto en las URLs. La UI y sus especificaciones se sirven desde
@@ -49,7 +47,7 @@ Los catálogos internos describen acceso directo. Sus URLs `localhost` suponen
 procesos locales o puertos Docker publicados; los nombres `*-service` requieren
 la red Docker. Compose no publica normalmente patient ni billing. Un navegador
 puede bloquear las llamadas directas por CORS o contenido mixto; importar el
-catálogo en Postman desde una red con acceso al servicio. Esta entrega no agrega
+catálogo en Postman desde una red con acceso al servicio. Swagger no agrega
 puertos ni proxies para los endpoints internos. La seguridad JWT y roles de
 pacientes/analytics se aplica en el gateway: los servicios directos necesitan
 red privada, según [recovery-operations.md](recovery-operations.md).
@@ -220,18 +218,5 @@ rutas de los controladores de negocio actuales. La suite de routing existente
 comprueba que la incorporación de Swagger conserva el proxy y la autorización.
 Las pruebas no certifican despliegue AWS ni ejecutan mutaciones mediante la UI.
 
-Verificación local del 31/10/2026: `clean verify -Pisolated-tests` aprobó 72
-pruebas de gateway (43 unitarias y 29 de contexto/HTTP, incluidas las cuatro
-de documentación). `check-contracts.ps1` confirmó ambas parejas Protobuf
-idénticas. Se corrigió el aviso de copia de esquemas de springdoc aplicando el
-catálogo mediante `OpenApiCustomizer`, con generación OpenAPI 3.0 explícita;
-se comprobaron los esquemas completos para no perder restricciones al generar
-JSON/YAML. La comparación inicial detectó diferencias de orden en `required`,
-normalizadas en los catálogos. No quedaron fallos en la suite completa.
-
-En la verificación inicial se comprobó la entrega HTTP de la página, JavaScript,
-CSS y configuración, sin sesión visual de navegador, Compose ni AWS.
-Posteriormente se verificó el arranque real de Compose al resolver la adopción
-de bases descrita en compose-troubleshooting.md; no hubo despliegue AWS.
 Los JSON requieren mantenimiento cuando cambien los contratos: la cobertura
-de rutas no demuestra por sí sola todos los posibles comportamientos del backend.
+de rutas no demuestra por sí sola todos los comportamientos del backend.

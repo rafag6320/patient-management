@@ -1,4 +1,4 @@
-# Preparación AWS — R18/R19
+# Preparación AWS
 
 Estado: candidato local revisable; **no desplegado ni publicado en AWS**.
 La síntesis no verifica cuotas, precios, versiones disponibles por región,
@@ -12,11 +12,11 @@ Desde la raíz, con Java 21, Maven Wrapper, PowerShell 7 y Node 22:
 ./scripts/synth.ps1
 ./scripts/review-infrastructure.ps1
 ./scripts/verify-localstack.ps1
-./scripts/build-release.ps1 -Version roadmap-r11-r19-20261030
+./scripts/build-release.ps1 -Version v1.0.0
 ```
 
-`infrastructure` mantiene CDK 2.178.1; elimina el SDK AWS v1 completo sin uso y
-agrega JUnit sólo para tests y exec-maven-plugin para síntesis reproducible.
+`infrastructure` utiliza CDK 2.178.1, JUnit para tests y exec-maven-plugin
+para síntesis reproducible.
 No requiere credenciales para los comandos anteriores. La salida es siempre
 `.verification/infrastructure/cdk.out`, independientemente del directorio del IDE.
 El provider de descubrimiento usa Node 22 explícito, evitando el runtime antiguo

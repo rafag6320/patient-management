@@ -9,8 +9,8 @@ persistence, failure recovery, and automated verification across service boundar
 **Start here:** [demo guide — español](docs/demo.md) · [API / Swagger guide — español](docs/swagger.md) ·
 [releases and verification](https://github.com/rafag6320/patient-management/releases).
 
-This is a portfolio project, not a clinical product. Billing creates accounts; it
-does not implement invoices, payments, or balances. All demo data is synthetic.
+Billing creates accounts; it does not implement invoices, payments, or balances.
+All demo data is synthetic.
 
 ## What you can demonstrate
 
@@ -95,7 +95,7 @@ pwsh -File ./scripts/demo.ps1 -Action Stop
 ```
 
 See the [Spanish demo guide](docs/demo.md) for expected output, prerequisites,
-failure handling, Swagger walkthrough and a five-minute presentation script.
+failure handling and Swagger usage.
 For an existing installation, follow [migration adoption](docs/migrations.md)
 before starting it; never delete its volumes to bypass a migration error.
 
@@ -112,14 +112,13 @@ With a host JDK 21 and PowerShell 7:
 ```
 
 The [CI workflow](.github/workflows/verify.yml) also tests/synthesizes infrastructure,
-checks the bounded LocalStack scenario and runs the portfolio demo. It retains
+checks the bounded LocalStack scenario and runs the isolated demo. It retains
 reports even if a check fails. Release notes link the exact tagged commit and
 its successful run; the badge above tracks the latest main run.
 
 Tests cover validation, conflicts, roles, contracts, RPC deadlines, lost replies,
-duplicate events and restart recovery. Historical execution reports remain in
-docs/verification-*.md; they are dated evidence, not results for every later commit.
-See [local verification](docs/local-development.md) for the complete test matrix.
+duplicate events and restart recovery. See [local verification](docs/local-development.md)
+for the complete test matrix.
 
 ## Origin and subsequent improvements
 
@@ -134,12 +133,10 @@ learning base. This repository does not claim original authorship of the course.
 Subsequent work includes persistent/idempotent billing, Flyway migrations, durable
 registration recovery, analytics deduplication/quarantine, role authorization,
 expanded tests, CI, deployment preparation and centralized API documentation.
-The recorded baseline is commit b44e478; it is a local learning snapshot, not
-an assertion that the tree exactly matches a particular upstream revision.
 
 Development was assisted by Codex. Technical choices, implementation and
 verification are documented so the result can be inspected and explained.
-No new license is assigned by this portfolio release.
+No new license is assigned.
 
 ## Limits and further reading
 
@@ -157,4 +154,4 @@ No new license is assigned by this portfolio release.
 Technical guides (Spanish): [architecture](docs/architecture.md),
 [decisions](docs/decisions.md), [registration semantics](docs/patient-registration-semantics.md),
 [recovery operations](docs/recovery-operations.md), [AWS preparation](docs/aws-deployment.md)
-and [roadmap/history](docs/roadmap.md).
+and [roadmap](docs/roadmap.md).

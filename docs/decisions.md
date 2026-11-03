@@ -1,371 +1,122 @@
-# Decisiones y propuestas
+# Decisiones técnicas
 
-Este registro conserva la evolución desde la auditoría inicial; los estados de
-entregas anteriores no sustituyen la arquitectura actual. Los documentos previos estaban vacíos.
-"Observada" significa verificable en el código; no implica conocer
-la motivación histórica ni recomendar conservar todos sus detalles.
+Este documento resume las decisiones vigentes y sus consecuencias. La
+[arquitectura](architecture.md) describe el sistema actual; las mejoras aún no
+implementadas están en el [roadmap](roadmap.md).
 
-## Decisiones observadas en la auditoría inicial (históricas)
+## Servicios y comunicaciones
 
-| ID | Estado | Decisión observable |
-|---|---|---|
-| D01 | Observada | Aplicaciones Spring Boot separadas por responsabilidad. |
-| D02 | Observada | Bases independientes para patient y auth. |
-| D03 | Observada | Gateway HTTP como punto de entrada previsto. |
-| D04 | Observada | Validación JWT delegada por HTTP a auth. |
-| D05 | Observada | Comunicación patient -> billing mediante gRPC. |
-| D06 | Observada | Eventos de alta mediante Kafka y Protobuf. |
-| D07 | Observada | Hibernate update y SQL inicial, sin migraciones. |
-| D08 | Observada | Docker Compose para el entorno local. |
-| D09 | Observada | CDK Java con intención de usar ECS, RDS y MSK. |
+Se mantienen cinco aplicaciones independientes, cada una con una responsabilidad:
+patient, auth, billing, analytics y gateway. Es una elección educativa para
+explorar límites de datos y fallos de red. Para este alcance, un monolito modular
+sería una alternativa con menor coste operativo.
 
-## Decisiones implementadas
+REST es la interfaz de clientes; gRPC define el contrato tipado de creación de
+cuentas; Kafka desacopla el procesamiento de analytics del alta. El coste es
+mantener contratos, deadlines y recuperación entre procesos. Los Protobuf se
+conservan en los módulos que los usan y se comparan automáticamente.
 
-El pedido del usuario de implementar R01–R04 autoriza estas elecciones locales
-dentro de su alcance. No modifica decisiones abiertas de negocio ni autoriza
-despliegues externos.
+## Persistencia y migraciones
 
-### D10 — Cadena de herramientas local (P01)
+Cada servicio con datos tiene PostgreSQL propio. Billing no consulta patient ni
+analytics consulta bases ajenas. La unicidad de email/DNI en patient y de
+patientId en billing se garantiza también mediante restricciones SQL: una
+preconsulta por sí sola no resuelve solicitudes concurrentes.
 
-- Estado: implementada en R01–R02.
-- Contexto: consola Java 21 y Maven Java 25; wrappers Maven distintos.
-- Alternativas: modificar la configuración global o seleccionar el JDK por proceso.
-- Elección: Java 21 y Maven Wrapper 3.9.16, selección por script y validación
-  Enforcer en las cinco aplicaciones; salida CLI separada del IDE.
-- Consecuencias: no cambia JAVA_HOME global; el primer uso requiere Maven Central.
-  Se conservan Boot 4.1.1 y Cloud 2025.1.3. Protoc y runtimes Protobuf se alinean
-  en 4.29.1; analytics elimina el generador gRPC porque sólo define mensajes.
-- Compatibilidad: sin cambios HTTP ni Protobuf. Gateway añade starter-webclient
-  tras detectar un fallo de arranque por ausencia de WebClient.Builder.
-- Evidencia y validación: compilación limpia, tests gRPC/OpenAPI y construcción
-  de imágenes; comandos y resultados en roadmap.md y local-development.md.
+Flyway administra las migraciones por servicio; Hibernate valida el esquema.
+Frente a la actualización implícita de Hibernate, esto permite revisar cambios
+y comprobar el historial. Las migraciones aplicadas son inmutables. La adopción
+de bases anteriores exige backup restaurable, preflight y baseline manual;
+no se habilitan baseline automático ni clean. Ver [migraciones](migrations.md).
 
-### D11 — Pruebas explícitas y aisladas (P08)
+## Alta con confirmación de billing e intención durable
 
-- Estado: implementada en R03.
-- Contexto: tests usaban configuración de desarrollo; el mapper levantaba Spring;
-  las pruebas HTTP podían contactar localhost sin preparación.
-- Alternativas: depender de servicios del desarrollador o preparar entornos aislados.
-- Elección: unitarios puros por defecto; contextos optativos con H2 en memoria,
-  mocks de las integraciones de patient, listeners detenidos y puerto gRPC
-  aleatorio; Compose separado para PostgreSQL/Kafka reales. HTTP heredado
-  optativo, sin destino implícito.
-- Consecuencias: H2 no prueba semántica PostgreSQL; el smoke no demuestra
-  recuperación distribuida ni cubre todos los escenarios de R15.
-- Compatibilidad: sin cambios en contratos o credenciales existentes.
-- Evidencia y validación: Surefire, Failsafe y smoke registrados en roadmap.md.
+Un HTTP 200 de alta confirma paciente, cuenta billing válida e intención durable
+del evento. Kafka y analytics se procesan después. Se eligió esta garantía frente
+a responder 202 antes de crear la cuenta o exigir que Kafka esté disponible para
+completar la solicitud.
 
-### D12 — Disponibilidad de Compose (P09)
+Paciente y registration_work se guardan en una transacción local. Las llamadas de
+red se ejecutan fuera de ella. Un dispatcher reclama trabajo mediante lease/token
+y confirma avances sólo si conserva la propiedad. Tras un reinicio puede repetir
+billing con el mismo patientId y publicar el evento pendiente.
 
-- Estado: implementada en R04.
-- Contexto: dependencias sin comprobación de disponibilidad.
-- Alternativas: pausas fijas o healthchecks.
-- Elección: healthchecks PostgreSQL, Kafka y aplicaciones; depends_on con
-  service_healthy; probe Java sin curl en las imágenes JRE. Directorio de logs
-  Kafka dentro del volumen; nombres de contenedores por proyecto.
-- Consecuencias: espera acotada de arranque; sin reintentos de negocio. Antes de
-  recrear contenedores Kafka antiguos se deben revisar datos fuera del volumen.
-  No se ejecutan migraciones ni borrados sobre los datos del desarrollador.
-- Compatibilidad: conserva puertos predeterminados, DNS de servicios y rutas
-  de volúmenes PostgreSQL. Los puertos host admiten configuración para pruebas.
-- Evidencia y validación: smoke con volúmenes propios, reinicios y recreación;
-  resultados en roadmap.md.
+No se usa una transacción distribuida ni se borra el paciente como compensación:
+una respuesta perdida puede ocultar un efecto remoto ya confirmado. Billing es
+idempotente por patientId; Kafka admite redelivery. La clave HTTP opcional permite
+recuperar la operación original sin crear otro paciente. Reglas y códigos en
+[semántica del alta](patient-registration-semantics.md).
 
-### D13 — Enrutamiento común y fallos acotados de auth (R05)
+Los snapshots iniciales y las claves consumidas se retienen; no hay purga ni
+reconciliación histórica automática. El procedimiento de revisión y reanudación
+está en [operación](recovery-operations.md).
 
-- Estado: implementada por el pedido del usuario de resolver R05 (30/10/2026).
-- Contexto: prod enviaba `/auth/login` a un servicio que expone `/login`;
-  proxy y validación podían apuntar a destinos diferentes. No había un límite
-  de validación ni tratamiento controlado de errores de conexión.
-- Alternativas: duplicar y sincronizar rutas por perfil, o heredar una definición
-  común y variar únicamente destinos. Se elige la segunda.
-- Elección: `/api/auth/**` elimina dos segmentos y `/api/patients/**` elimina uno
-  en ambos perfiles. Una URL de auth sirve para proxy y validación. Se conservan
-  los destinos predeterminados de prod y se permiten variables de configuración.
-- Fallos: se conserva 401 para rechazo del token y 502 para fallos de validación
-  remota; se extiende este último a conexión fallida y timeout. No se introduce
-  un código de error adicional. Auth trata JWT vacíos como inválidos (401),
-  evitando una excepción no controlada. Sus errores de formato de encabezado
-  siguen devolviendo 400 directamente.
-- Límites: 2s por defecto para validación JWT y para el contacto del proxy con
-  auth; configurables y estrictamente positivos. No se añaden reintentos ni se
-  limita la llamada posterior a patient con el timeout de auth. El proxy conserva
-  respuestas HTTP de auth, incluido 401 de login. Si una respuesta ya fue enviada,
-  no intenta reescribir su código ante un fallo posterior.
-- Consecuencias: auth caído no habilita acceso a pacientes; se puede diagnosticar
-  el fallo con un 502 en lugar de esperar indefinidamente. No se cambia la política
-  de roles ni la semántica del alta de pacientes.
-- Evidencia: tests unitarios y HTTP con puertos aleatorios en perfiles principal
-  y prod, auth con H2 y prueba de Compose aislada. Comandos, resultados y límites
-  en [verification-r05.md](verification-r05.md).
+## Analytics histórico y deduplicación
 
-### D14 — Validación y unicidad de pacientes (R06)
+patientsCreated cuenta identidades PATIENT_CREATED distintas, no pacientes activos.
+La fila única por (eventType, patientId) representa el efecto de negocio; no hay
+un contador separado que pueda incrementarse dos veces. PostgreSQL se confirma
+antes del offset Kafka. Una caída entre ambos puede repetir el mensaje sin sumar
+otro efecto.
 
-- Estado: implementada y verificada el 30/10/2026.
-- Contexto: las conversiones de fecha/DNI podían lanzar excepciones; sólo se
-  consultaba el email antes de guardar, sin traducir carreras de unicidad.
-- Elección: validadores Bean Validation en DTO y comprobaciones de DNI en el
-  servicio. Se conserva el rango no negativo representable por el Integer actual,
-  sin imponer longitudes nacionales, mayoría de edad ni fechas pasadas.
-- Las fechas deben existir y usar yyyy-MM-dd. registeredDate conserva su grupo
-  obligatorio sólo en alta; en actualización sigue sin modificar la fecha guardada.
-- La base decide los conflictos concurrentes: saveAndFlush confirma la escritura
-  antes de efectos remotos y sólo SQLSTATE 23505 se traduce a duplicado.
-  Alternativas descartadas: confiar sólo en preconsultas o convertir cualquier
-  excepción de integridad en duplicado, porque ocultan carreras u otros defectos.
-- Compatibilidad: mismos endpoints, campos y códigos existentes (400 para datos
-  inválidos/duplicados, 404 para inexistentes, 200 en alta/actualización y 204 al
-  eliminar). No se introduce 409 ni un nuevo formato de error, por lo que no se
-  requiere una modificación de contrato público.
-- No se envuelve PostgreSQL, gRPC y Kafka en una supuesta transacción común;
-  siguen pendientes la recuperación de altas y las migraciones de R07–R12.
-- Validación: CRUD HTTP con H2 y PostgreSQL efímero, concurrencia de alta y
-  actualización, y tests que fuerzan SQL 23505 tras preconsultas exitosas.
-  Evidencia en [verification-r06.md](verification-r06.md).
+Los mensajes inválidos se conservan en cuarentena con metadatos y hash, sin
+payload personal. Un fallo SQL provoca reintento, no descarte. No se guardan
+nombre/email ni se generan eventos de actualización o eliminación: modificar o
+borrar un paciente no sincroniza billing ni decrementa analytics.
 
-### D15 — Migraciones por servicio y adopción manual (R07/P02)
+## Autenticación, roles y límites internos
 
-- Aprobación explícita del usuario el 30/10/2026: Flyway y estrategia sin baseline
-  automático, borrado ni intervención en bases del desarrollador durante la tarea.
-- Contexto: Hibernate update no proporciona historial reproducible y debe
-  reemplazarse preservando los datos de bases existentes.
-- Alternativas: Flyway SQL, Liquibase con changelogs o seguir con actualización
-  implícita. Se eligió Flyway 12.4.0 gestionado por Boot 4.1.1, mediante su starter
-  y módulo PostgreSQL. El plugin Maven de igual versión permite mantenimiento
-  explícito; es la única dependencia funcional nueva de esta entrega.
-- Cada servicio conserva V1 y su historial en su propia base. Hibernate valida
-  después de migrar. V1 no modifica datos ni credenciales; auth conserva su seed
-  condicional actual, cuya separación por entorno queda en R08.
-- Bases nuevas: V1 crea el esquema. Bases existentes: backup restaurable, revisión
-  de una copia y preflight de columnas/restricciones antes del baseline manual 1.
-  No se presume que un historial baseline demuestra compatibilidad del esquema.
-- baseline-on-migrate permanece false; clean permanece deshabilitado. Se rechazan
-  bases pobladas sin historial, evitando adoptarlas al arrancar por accidente.
-- Las migraciones aplicadas son inmutables. Fallos transaccionales se inspeccionan
-  y recuperan en copia; versiones aplicadas se corrigen con nuevas migraciones.
-- Consecuencia operativa: los volúmenes anteriores requieren adopción antes de
-  iniciar la versión nueva. No se ejecutó esa adopción sobre bases personales.
-- H2 conserva create-drop y Flyway explícitamente desactivado para tests rápidos;
-  las migraciones y el arranque validate se comprueban en PostgreSQL 16 efímero.
-- Procedimiento y límites: [migrations.md](migrations.md). Evidencia y comandos:
-  [verification-r07.md](verification-r07.md).
+Auth firma y valida JWT; el gateway consulta esa validación por HTTP. ADMIN puede
+escribir y leer; USER sólo leer. El gateway utiliza roles devueltos por auth y
+descarta encabezados de rol aportados por el cliente.
 
-### D16 — Configuración explícita y seed de desarrollo (R08)
+La validación y el proxy a auth tienen tiempos acotados, sin reintentos de POST.
+Un token inválido devuelve 401; permisos insuficientes, 403; auth inaccesible, 502.
+Los servicios internos requieren red privada: no incorporan una segunda política
+JWT ni mTLS HTTP/gRPC.
 
-- Estado: implementada por el pedido de R08 (30/10/2026).
-- Contexto: auth podía seleccionar H2 automáticamente y ejecutaba el seed en
-  cualquier entorno. Los valores de conexiones locales estaban en configuración
-  común y los perfiles del gateway contenían destinos de desarrollo implícitos.
-- Alternativas: conservar fallbacks globales o concentrarlos en perfiles explícitos.
-  Se elige `local` para procesos del host, `docker` para Compose de desarrollo y
-  `prod`/sin perfil con configuración externa obligatoria. Las rutas no cambian.
-- El SQL original se mueve sin modificar su contenido a db/dev/data.sql. Sólo
-  local/docker y fixtures de test lo habilitan. En otros entornos se rechaza
-  activar spring.sql.init. No se eliminan ni se alteran cuentas existentes.
-- H2 pasa a scope test en auth; se retira la consola H2 de patient, que ya tiene
-  driver H2 de test explícito. Los artefactos ejecutables no contienen H2.
-- Cada aplicación valida sus propias claves mediante BeanFactoryPostProcessor,
-  antes de construir datasource/Flyway/clientes. No se introduce un módulo común
-  ni dependencias nuevas. Los mensajes del guard contienen sólo nombres de claves.
-- Se rechaza prod mezclado con local/docker, y también con test en módulos con
-  base de datos. Los tests de rutas gateway conservan test/prod con upstreams
-  locales. Test mantiene configuración aislada explícita y no va empaquetada.
-- Consecuencia: fuera de desarrollo el arranque requiere conexiones y secretos
-  explícitos. Los valores existentes se conservan dentro del perfil adecuado;
-  no hubo rotación ni modificación de contraseñas, hashes o clave JWT existentes.
-- Validación: unitarios de las cinco aplicaciones, arranques PostgreSQL en
-  prod/local/docker, inspección de JAR y Compose aislado. Procedimiento en
-  [environments.md](environments.md); evidencia en [verification-r08.md](verification-r08.md).
+X-Correlation-Id se valida o genera y se propaga por HTTP, gRPC y Kafka.
+Los endpoints operativos exponen cantidades agregadas, sin tokens ni snapshots.
 
-### D17 — Cuenta billing persistente e idempotente (R09/P03)
+## Configuración y pruebas aisladas
 
-- Estado: alcance aprobado expresamente por el usuario e implementación
-  verificada el 30/10/2026.
-- Elección: PostgreSQL propio billing_db, JPA y Flyway como en los servicios
-  existentes. Alternativas no elegidas: continuar simulando, usar almacenamiento
-  volátil o acceder al esquema de patient. No hay acceso cruzado ni FK a otra base.
-- Cuenta mínima: ID UUID, patientId opaco de hasta 255 caracteres, nombre hasta
-  100 y email válido hasta 255. Los tres campos de entrada son obligatorios.
-  No se agregan importes, facturas, pagos ni cambios Protobuf.
-- patientId tiene una restricción única. Repetir un request válido devuelve el
-  mismo ID y no sobrescribe datos iniciales aunque cambien nombre/email. No se
-  normaliza el identificador; la identidad corresponde al string recibido.
-- La preconsulta permite recuperar una cuenta existente; ante una carrera, la
-  transacción de inserción perdedora revierte y se vuelve a leer al ganador.
-  Sólo se recupera de SQLSTATE 23505 si existe la cuenta de ese patientId; otras
-  restricciones o fallos no se convierten en éxito.
-- El adaptador gRPC devuelve success=true sólo tras recibir la cuenta persistida.
-  Validación inválida usa INVALID_ARGUMENT; fallos de recursos/transacciones
-  transitorios usan UNAVAILABLE; errores restantes usan INTERNAL, sin detalles
-  del almacenamiento en la respuesta. No se modifican ambas copias del contrato.
-- Compose añade billing-db con volumen propio y healthcheck. Fuera de desarrollo
-  la configuración exige datasource PostgreSQL explícito; H2 sólo existe en test.
-- Límites: la cuenta conserva un snapshot inicial, no sincroniza actualizaciones
-  ni eliminaciones de patient y no crea cuentas retroactivamente. R10 define luego
-  la semántica de coordinación (D18); la implementación sigue en R11–R12.
-- Evidencia y comandos en [verification-r09.md](verification-r09.md).
+Java 21 y Maven Wrapper 3.9.16 se seleccionan por proceso. La salida CLI usa
+.verification para separarse del IDE. Los perfiles local/docker contienen valores
+de desarrollo y seed condicional; fuera de ellos se exige configuración explícita.
+H2 sólo se incluye en tests.
 
-## Decisiones de recuperación y operación implementadas o preparadas
+Los unitarios no requieren infraestructura. Los contextos usan configuración
+explícita y dependencias controladas. PostgreSQL, Kafka y el sistema completo se
+verifican en proyectos propios con datos sintéticos. H2 no sustituye esas pruebas.
+Comandos en [desarrollo local](local-development.md).
 
-### D18 — Semántica del alta y recuperación (R10/P04)
+## Disponibilidad y demo local
 
-- Estado: propuesta completa aprobada expresamente por el usuario el 30/10/2026;
-  definición de R10 completada e implementación local en R11–R12. La aprobación
-  se distingue de la evidencia nueva de ejecución en verification-r11-r19.md.
-- Contexto: el paciente se confirma antes de billing/Kafka sin conservar avance;
-  perder la respuesta produce resultados inciertos y POST repetidos con error de
-  duplicado. Billing ya garantiza una cuenta por patientId (D17).
-- Elección: 200 con el DTO actual sólo tras confirmar paciente, cuenta billing
-  válida e intención durable de evento. No esperar el ack Kafka ni analytics;
-  entregar después, conservando y recuperando el trabajo. Registrar operación
-  y paciente en una transacción local antes de efectos remotos, sin SQL abierto
-  durante llamadas de red y sin borrados compensatorios automáticos.
-- Recuperación: estados pendientes/inciertos/confirmados y revisión operativa;
-  repetir billing siempre con el mismo patientId/snapshot. Reintentos con límites,
-  espera creciente y recuperación tras reinicio. Kafka admite redelivery y R13
-  deberá evitar duplicar efectos usando la identidad lógica del evento.
-- Contrato aprobado: encabezado opcional Idempotency-Key para recuperar la misma
-  operación y respuesta inicial. Errores 503 para alta pendiente/incierta o fallos
-  de disponibilidad, 502 para rechazo/respuesta billing inválida, 409 para clave
-  incompatible/consumida y PUT/DELETE mientras billing no esté confirmado. Se
-  mantienen los DTO, rutas, Protobuf y el 400 de duplicados sin clave o con otra.
-- Alternativas evaluadas: esperar además Kafka, alta asíncrona 202, conservar el
-  flujo sin recuperación, borrar como compensación y deduplicar por email/DNI.
-  Comparación, matriz de fallos, reglas de claves y estados detallados en
-  [patient-registration-semantics.md](patient-registration-semantics.md), que forma
-  parte de esta decisión aprobada.
-- Consecuencias: el 200 no implica entrega Kafka; un 503 puede dejar un paciente
-  pendiente visible en GET. Sin clave no se garantiza recuperar el resultado por
-  POST. No hay atomicidad distribuida ni promesa de procesamiento exactamente una
-  vez. Snapshots y claves requieren retención segura antes de implementarse.
-- Patrón: R10 fijó las garantías; R12 aprobó después el mecanismo concreto (D19).
-  No se reconcilian automáticamente pacientes históricos.
-- Validación: inspección estática y revisión documental en R10, registradas en
-  [verification-r10.md](verification-r10.md). Los escenarios SQL/RPC/Kafka/HTTP,
-  concurrencia y reinicios se comprobaron posteriormente en R11–R19; evidencia
-  en [verification-r11-r19.md](verification-r11-r19.md).
+Compose usa healthchecks en aplicaciones, bases y broker. La demo reutiliza las
+imágenes con un override, recursos etiquetados y estado propio. Sólo publica el
+gateway en loopback; Stop conserva volúmenes. Se evita así mezclar datos de la
+demo con una instalación habitual.
 
-### D19 — Registro de operación y outbox local (R12/P05)
+Antes de los escenarios se comprueba login y lectura autenticada: Actuator UP no
+garantiza que el primer recorrido de negocio termine dentro de sus límites. Esta
+preparación admite sólo 502/503 transitorios durante un plazo acotado. No amplía
+los timeouts de los servicios ni reintenta tests fallidos.
 
-- Patrón aprobado expresamente por el usuario el 30/10/2026, antes de implementarlo.
-- Paciente y registration_work se confirman juntos mediante JPA/JDBC y el mismo
-  datasource/transaction manager. V2 añade el registro; V3 añade observabilidad,
-  preservando las migraciones anteriores. No hay accesos a otras bases.
-- La intención inicial no se habilita para publicar hasta confirmar billing.
-  Dispatcher SQL con lease/token, efectos fuera de SQL y avances condicionados
-  al propietario. Un reinicio permite recuperar trabajo y repetir la RPC idempotente.
-- Reintentos con backoff/jitter; fallos inciertos acotados antes de revisión.
-  Sin dependencia de una nueva librería ni compensación por borrado.
-- Claves opcionales se guardan como SHA-256 y se comparan contra fingerprint de
-  la entrada lógica. Tombstones preservan claves consumidas. Snapshots se retienen,
-  no hay purga automática. Reanudación en recovery-operations.md.
-- Validación: transacciones/carreras/fencing con H2 y PostgreSQL, Kafka incierto,
-  fallos SQL y prueba real de cuenta creada con respuesta descartada y proceso
-  patient detenido. No se promete exactly-once ni reconciliación histórica.
+## OpenAPI central
 
-### D20 — Total histórico y deduplicación de analytics (R13/R14)
+El gateway sirve Swagger y catálogos OpenAPI explícitos. Sus rutas son filtros,
+por lo que escanear sus controladores no descubriría los contratos de negocio.
+Los JSON permiten revisar esos contratos sin agregar anotaciones a cada servicio.
+A cambio, deben actualizarse con el código; los tests comprueban rutas, referencias
+y DTO compartidos. Ver [Swagger](swagger.md).
 
-- Resultado y PostgreSQL propio aprobados expresamente por el usuario el 30/10/2026.
-- patientsCreated cuenta PATIENT_CREATED distintos por patientId. JDBC/Flyway,
-  inserción única antes del commit de offset; no se guarda nombre/email.
-- GET /analytics/summary y su ruta GET /api/analytics/summary; DTO {patientsCreated}.
-  No se agregan eventos PUT/DELETE ni se decrementa el total histórico.
-- Identidad lógica (eventType,patientId), clave Kafka patientId y Protobuf intactos.
-  Comparación automática de ambas copias de contratos desde verify.ps1.
-- Mensajes inválidos tienen cuarentena durable con metadatos/hash y sin payload;
-  fallos SQL se propagan para redelivery. Registro y efecto de conteo corresponden
-  a una misma fila: no hay contador separado susceptible a incremento duplicado.
-- Patient usa spring-boot-starter-kafka para aplicar realmente propiedades del
-  productor, sin la fábrica manual que descartaba límites y TLS/SCRAM. La
-  configuración efectiva local/AWS y el contexto completo tienen tests específicos.
-- Dependencias nuevas JDBC/Flyway/PostgreSQL gestionadas por Boot y H2 sólo test.
-  Base/volumen analytics de desarrollo propios, sin tocar cuentas existentes.
-- Validación: concurrencia y fallos SQL con H2/PostgreSQL, Kafka real con duplicados
-  y mensaje inválido, persistencia después de recrear contenedores.
+## Infraestructura preparada
 
-### D21 — Roles en gateway y correlación sin datos personales (R17)
+CDK Java separa registro ECR, candidato AWS y emulación. El candidato define RDS,
+MSK, ECS/Fargate, descubrimiento privado, secretos y ALB HTTPS. Usa digests de
+imágenes como entradas explícitas.
 
-- Política ADMIN/USER aprobada expresamente por el usuario el 30/10/2026.
-- ADMIN: CRUD y analytics. USER: sólo lectura. Otros roles: 403. Auth verifica el
-  JWT y comunica X-Validated-Roles al gateway; encabezados del cliente se eliminan.
-  Se mantienen login, JWT, DTO y 401/502 de auth. No se cambian cuentas/credenciales.
-- CorrelationId validado/generado por HTTP y propagado a RPC, registro durable y
-  Kafka. Métricas agregadas y endpoints operativos internos; sin snapshots/tokens.
-- Gateway limita DNS a 5s y transforma fallos/timeout de upstream sin respuesta
-  comprometida en 503. No repite POST; un resultado puede seguir siendo incierto.
-- Los servicios internos requieren red privada: no se añade una segunda política
-  JWT ni mTLS en esta entrega. Tests de roles y flujo real cubren el gateway.
-
-### D22 — Preparación reproducible de infraestructura (R18/R19)
-
-- Estado: candidato preparado y revisado localmente por el pedido de trabajar
-  R18/R19; **no adoptado ni desplegado en una cuenta AWS**.
-- Se conservan Java 21/CDK 2.178.1 y se separan ECR, candidato AWS y emulación.
-  Se elimina SDK AWS v1 sin uso; JUnit/exec-maven-plugin sólo para verificación.
-- Candidato: cuatro RDS, MSK TLS/SCRAM, ECS privado con Cloud Map, secretos en
-  ejecución, digests ECR y ALB HTTPS; backups, retención y protección persistente.
-- LocalStack 4.14.0 se limita a CloudFormation/Secrets Manager ficticios en un
-  contenedor propio, preservando el LocalStack del desarrollador.
-- Alternativas/limitaciones: no simular RDS/MSK/ECS sin evidencia; no trasladar
-  direcciones Docker ni credenciales al cloud. Preparación AWS, TLS interno,
-  ACL, permisos efectivos, cuotas y presupuesto se revisan antes de aprobación.
-- Comandos, artefactos y fuentes oficiales en aws-deployment.md. Un template
-  sintetizado no demuestra disponibilidad ni funcionamiento real en AWS.
-
-### D23 — Swagger central y catálogos explícitos (31/10/2026)
-
-- Adoptada por el pedido de documentar todos los endpoints con Swagger.
-- Gateway sirve Swagger UI mediante springdoc-openapi-starter-webflux-ui 3.2.0,
-  línea compatible con Spring Boot 4. No se cambian versiones de otros módulos.
-- OpenAPI 3.0.3 explícito para el contrato público y catálogos de patient, auth,
-  analytics y operación interna. Las rutas de gateway se implementan mediante
-  filtros: un escaneo de controladores del gateway no documentaría el negocio.
-  Se elige un contrato revisable con cobertura de rutas/DTO probada, en lugar
-  de añadir anotaciones y dependencias a todos los servicios.
-- `/v3/api-docs` reutiliza el catálogo público. El servidor público relativo
-  evita fijar el host del despliegue; los internos identifican sus direcciones
-  de desarrollo y las limitaciones de acceso/CORS. No se habilitan nuevos proxies.
-- Se documentan roles, validación, errores, idempotencia y consistencia eventual.
-  Billing conserva su Protobuf y se documenta como gRPC en swagger.md.
-- Consecuencia: cambios aprobados de contrato deben actualizar los JSON; los
-  tests detectan rutas faltantes, referencias rotas y diferencias entre los DTO
-  compartidos de los catálogos. No persiste JWT ni usa un validador externo.
-- Verificación y uso en swagger.md. No modifica datos, credenciales, reglas de
-  negocio, migraciones ni despliegues.
-
-### D24 — Entrega de portfolio y demo aislada (03/11/2026)
-
-- Aprobada en el plan de versión pública: README inglés, guías español, atribución
-  al curso original y desarrollo asistido con Codex.
-- Se reutiliza Compose con un override exclusivo, estado local y etiquetas de
-  propiedad. Sólo gateway se publica en loopback; Stop conserva los volúmenes.
-- Las operaciones de negocio no cambian. El script verifica desde fuera de las
-  aplicaciones el mismo flujo y sus efectos persistidos, sin acceso cruzado en servicios.
-- La entrega pública usa main y un release etiquetado con evidencia del commit
-  exacto; la publicación de código no autoriza despliegue AWS ni publicación de imágenes.
-- La preparación espera además login y lectura autenticada por gateway: Actuator UP
-  no demuestra disponibilidad del primer recorrido BCrypt/JPA/proxy. Se admiten sólo
-  502/503 transitorios por hasta 90s; no se cambian timeouts ni se reintentan tests fallidos.
-  Una regresión con HTTP ficticio prueba éxito, rechazo de 401 y restricción loopback.
-- Alternativa descartada para esta entrega: demo sobre los volúmenes habituales,
-  por mezclar evaluación y datos de la instalación. No se incorpora licencia nueva.
-
-## Propuestas pendientes de aprobación
-
-| ID | Propuesta | Motivo y condición |
-|---|---|---|
-| P10 | Aprobar la ejecución del candidato AWS preparado en D22. | Preparación completada; faltan datos del entorno y autorización para desplegar. |
-
-## Decisiones abiertas
-- ¿Qué política de retención/purga deben tener los snapshots durables?
-- ¿Qué necesidades futuras requerirían eventos PUT/DELETE? Esta entrega mantiene
-  sólo PATIENT_CREATED, según el alcance aprobado.
-- ¿Qué cuenta/región, presupuesto y parámetros se aprobarán para desplegar AWS?
-
-## Formato de futuras decisiones
-Cada decisión aprobada debe registrar:
-contexto, alternativas, elección, consecuencias,
-compatibilidad, evidencia y estrategia de validación.
-
-La presencia de una propuesta en este archivo no autoriza
-cambios de contratos, credenciales o despliegues.
+La síntesis y los tests de templates no prueban un despliegue real. LocalStack se
+limita a CloudFormation y un secreto ficticio; no emula aquí RDS/MSK/ECS.
+AWS permanece sin desplegar y requiere revisión de entorno, permisos, costes y
+operación. Ver [preparación AWS](aws-deployment.md).

@@ -50,7 +50,7 @@
   contextos Spring o tests de integración.
 - No usar bases con datos del desarrollador para pruebas mutantes.
 - Reportar comandos, resultados, fallos y comportamiento no verificado.
-- Los reportes antiguos y los JAR existentes no prueban el estado actual.
+- Los resultados de otra revisión y los JAR existentes no prueban el estado actual.
 
 ## Restricciones
 - No modificar secretos ni credenciales.
