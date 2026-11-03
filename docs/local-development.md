@@ -37,6 +37,7 @@ no fijan el parche/digest, por lo que no se garantiza reproducción bit a bit.
 | Sistema completo | `./scripts/verify-system.ps1` | Proyecto Compose aleatorio; HTTP, roles, RPC, Kafka, respuesta perdida y reinicios |
 | Contratos | `./scripts/check-contracts.ps1` | Copias Protobuf idénticas |
 | Documentación y scripts | `./scripts/check-portfolio.ps1` | Enlaces locales, JSON OpenAPI y sintaxis PowerShell |
+| Preparación funcional | `./scripts/verify-readiness-probe.ps1` | Fixture Node local: 502 inicial recuperable, 401 rechazado y destino externo bloqueado |
 | Infraestructura | `./scripts/synth.ps1` | Tests de templates y síntesis; no despliega |
 | Emulación acotada | `./scripts/verify-localstack.ps1` | CloudFormation/Secrets Manager ficticios; ejecutar synth antes |
 | Demo | `./scripts/demo.ps1 -Action Start`, luego Run y Stop | Entorno propio y sólo gateway publicado |
@@ -45,6 +46,12 @@ Los tests externos requieren external-tests y destinos explícitos; verify-syste
 los prepara con fixtures/puertos aislados. No invocar esos tests sobre instalaciones
 habituales. H2 no demuestra compatibilidad PostgreSQL; las pruebas reales complementan
 los contextos. El workflow de GitHub ejecuta los grupos completos y conserva reportes.
+
+Antes de JUnit, verify-system comprueba login y lectura autenticada por gateway:
+Actuator UP no garantiza que el primer recorrido BCrypt/JPA/proxy termine dentro
+de sus límites. Esta preparación es acotada y sólo admite 502/503 transitorios;
+los tests de negocio conservan sus aserciones estrictas. La demo utiliza la misma
+preparación. No se alteran timeouts productivos para estabilizar fixtures.
 
 El smoke anterior (`compose-smoke.ps1`) y verify-auth-compose siguen disponibles
 para checks específicos, pero la aceptación integral actual es verify-system.ps1.

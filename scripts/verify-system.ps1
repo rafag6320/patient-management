@@ -18,6 +18,9 @@ try {
     $readonlyEmail='readonly-'+[guid]::NewGuid().ToString('N')+'@example.com'
     # New synthetic USER fixture; no existing account, password or role is changed.
     Invoke-Compose exec -T auth-db psql -v ON_ERROR_STOP=1 -U postgres -d auth_db -c "INSERT INTO users (id,email,password,role) SELECT gen_random_uuid(),'$readonlyEmail',password,'USER' FROM users WHERE email='testuser@test.com'"
+    # Actuator UP does not warm the first BCrypt/JPA/gateway round trip.
+    # Prepare the fixture before JUnit; do not retry or weaken scenario assertions.
+    & "$PSScriptRoot/wait-system-ready.ps1" -GatewayUri 'http://127.0.0.1:34004/'
     & "$PSScriptRoot/maven.ps1" -Module integration-tests verify -Pexternal-tests '-Dpm.integration.confirm=isolated' '-Dgateway.baseUri=http://127.0.0.1:34004' "-Dtest.readonly.email=$readonlyEmail" '-Dbilling.jdbc.url=jdbc:postgresql://127.0.0.1:35435/billing_db' '-Danalytics.jdbc.url=jdbc:postgresql://127.0.0.1:35436/analytics_db' '-Dkafka.bootstrap.servers=127.0.0.1:39094' "-Dcompose.project=$projectName" "-Dproject.root=$projectRoot" '-Duser.timezone=UTC'
     $before=Invoke-RestMethod http://127.0.0.1:34002/analytics/summary -TimeoutSec 10
     Invoke-Compose down

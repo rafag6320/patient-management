@@ -157,6 +157,8 @@ try {
         Assert-Owned
         $page=Http 'GET' '/swagger-ui/index.html'
         Expect $page 200 'Swagger UI'
+        $readiness=& "$PSScriptRoot/wait-system-ready.ps1" -GatewayUri "$baseUri/"
+        Step $readiness
         Step "Swagger: $baseUri/swagger-ui.html"
     } elseif ($Action -eq 'Stop') {
         $null=Compose @('down')

@@ -30,6 +30,8 @@ jobs:
         run: ./scripts/verify.ps1 -WithContexts
       - name: Check portfolio documentation and scripts
         run: ./scripts/check-portfolio.ps1
+      - name: Check functional readiness probe behavior
+        run: ./scripts/verify-readiness-probe.ps1
       - name: PostgreSQL migration and recovery checks
         run: |
           ./scripts/verify-migrations-postgres.ps1
