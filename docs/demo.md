@@ -26,7 +26,8 @@ pwsh -File ./scripts/demo.ps1 -Action Run
 pwsh -File ./scripts/demo.ps1 -Action Stop
 ```
 
-Start construye imágenes y espera los healthchecks; el primer inicio puede
+Start construye imágenes, espera los healthchecks y comprueba login y lectura
+autenticada por gateway antes de anunciar disponibilidad. El primer inicio puede
 llevar varios minutos. Swagger queda en <http://127.0.0.1:44004/swagger-ui.html>.
 Run deja las aplicaciones activas. Stop retira sólo contenedores/red de la demo,
 conservando sus cinco volúmenes y su identidad para otro Start. Cada Run crea
@@ -36,6 +37,10 @@ El proyecto exclusivo pm-demo-... se registra en `.verification/demo/state.json`
 asociado a este checkout. Los recursos llevan una etiqueta de propiedad, validada
 antes de operar. No editar ni copiar el estado a otra carpeta. Sólo el gateway
 se publica en loopback; el override reemplaza las publicaciones originales.
+
+El override concede a PostgreSQL 60s de gracia de inicialización y 20 intentos
+de healthcheck, conservando pg_isready y el límite externo de espera de 300s.
+Una base disponible se reconoce de inmediato; no es una pausa fija ni se desactiva fsync.
 
 Un puerto 44004 ocupado, un estado inválido o recursos sin identidad bloquean
 la acción sin detener otro entorno. Si se interrumpe la consola, ejecutar Start
@@ -90,6 +95,12 @@ No modificar datos manualmente durante Run: espera incrementos conocidos del
 contador. Los catálogos internos documentan contratos sin publicar sus puertos.
 Billing es gRPC, no una operación HTTP ejecutable en Swagger.
 Campos, roles y errores: [swagger.md](swagger.md).
+
+La preparación funcional admite 502/503 transitorios durante un máximo de 90 segundos,
+pero rechaza inmediatamente 400/401 y cualquier otro código inesperado. No cambia
+los límites de auth ni reintenta las aserciones de los escenarios. La regresión
+`scripts/verify-readiness-probe.ps1` comprueba ese comportamiento con un servidor
+local ficticio (requiere Node 22, ya instalado por CI); la demo no requiere Node.
 
 ## Flujo y guion de cinco minutos
 

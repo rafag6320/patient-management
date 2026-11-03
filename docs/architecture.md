@@ -192,4 +192,6 @@ El módulo integration-tests excluye los tests HTTP por defecto y requiere el
 perfil `external-tests` y destinos explícitos para ejecutarlos.
 La aceptación integral actual es verify-system.ps1 y complementa los contextos
 con PostgreSQL, Kafka y reinicios reales. La demo de portfolio usa un proyecto propio;
-ver [demo.md](demo.md). Los reportes R01–R19 son evidencia histórica fechada.
+ver [demo.md](demo.md). La preparación funcional de demo/aceptación comprueba login
+y lectura por gateway antes de iniciar aserciones estrictas, además de los healthchecks.
+Los reportes R01–R19 son evidencia histórica fechada.

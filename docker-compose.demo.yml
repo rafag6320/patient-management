@@ -20,15 +20,27 @@ services:
   patient-db:
     <<: *owned
     ports: !override []
+    healthcheck:
+      start_period: 60s
+      retries: 20
   auth-db:
     <<: *owned
     ports: !override []
+    healthcheck:
+      start_period: 60s
+      retries: 20
   billing-db:
     <<: *owned
     ports: !override []
+    healthcheck:
+      start_period: 60s
+      retries: 20
   analytics-db:
     <<: *owned
     ports: !override []
+    healthcheck:
+      start_period: 60s
+      retries: 20
   kafka:
     <<: *owned
     ports: !override []

@@ -343,6 +343,10 @@ despliegues externos.
   aplicaciones el mismo flujo y sus efectos persistidos, sin acceso cruzado en servicios.
 - La entrega pública usa main y un release etiquetado con evidencia del commit
   exacto; la publicación de código no autoriza despliegue AWS ni publicación de imágenes.
+- La preparación espera además login y lectura autenticada por gateway: Actuator UP
+  no demuestra disponibilidad del primer recorrido BCrypt/JPA/proxy. Se admiten sólo
+  502/503 transitorios por hasta 90s; no se cambian timeouts ni se reintentan tests fallidos.
+  Una regresión con HTTP ficticio prueba éxito, rechazo de 401 y restricción loopback.
 - Alternativa descartada para esta entrega: demo sobre los volúmenes habituales,
   por mezclar evaluación y datos de la instalación. No se incorpora licencia nueva.
 
