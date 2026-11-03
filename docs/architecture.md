@@ -33,6 +33,12 @@ JDBC y PostgreSQL propio para deduplicación y su resultado histórico.
 - Gateway: enrutar HTTP y consultar a auth para validar JWT.
 
 ## Contratos HTTP actuales
+
+El inventario completo, ejemplos, seguridad y errores están en
+[swagger.md](swagger.md). El gateway sirve Swagger UI en `/swagger-ui.html`,
+el contrato público en `/v3/api-docs` y cinco catálogos en `/openapi/*.json`.
+La documentación no agrega proxies ni exposición de puertos internos.
+
 Patient:
 - GET /patients: 200 con una lista.
 - POST /patients: 200 con el paciente creado.
@@ -52,8 +58,8 @@ Gateway, configuración principal y perfil prod:
 - /api/auth/** elimina los segmentos /api/auth.
 
 Ambos perfiles heredan las mismas rutas. La dirección de auth se comparte entre
-el proxy y `/validate`; los destinos se configuran mediante AUTH_SERVICE_ADDRESS
-y PATIENT_SERVICE_ADDRESS. Prod requiere destinos explícitos; local/docker
+el proxy y `/validate`; los destinos se configuran mediante AUTH_SERVICE_ADDRESS,
+PATIENT_SERVICE_ADDRESS y ANALYTICS_SERVICE_ADDRESS. Prod requiere destinos explícitos; local/docker
 proporcionan únicamente los valores de desarrollo de sus entornos.
 La validación JWT y el contacto del proxy con auth tienen límites configurables
 de 2 segundos. Un token rechazado devuelve 401; un fallo de transporte o timeout
@@ -80,8 +86,8 @@ Los errores de validación usan el mapa por campo existente y HTTP 400.
 El servicio comprueba email y DNI, y la base conserva la garantía de unicidad
 ante concurrencia. Una violación SQL 23505 se traduce al formato de duplicado
 existente (`error`, HTTP 400). Las demás violaciones de integridad no se ocultan
-como duplicados. La escritura se confirma antes de invocar billing/Kafka;
-esto no añade atomicidad ni recuperación distribuida.
+como duplicados. La coordinación y recuperación del alta se describen abajo;
+las validaciones y constraints por sí solas no crean atomicidad distribuida.
 
 ## Persistencia
 - Patient es propietario de patient_db en Compose.
@@ -184,5 +190,6 @@ aleatorio; analytics tiene H2 explícito y listeners detenidos. Gateway carga su
 en loopback y puertos aleatorios, en perfiles principal y prod.
 El módulo integration-tests excluye los tests HTTP por defecto y requiere el
 perfil `external-tests` y destinos explícitos para ejecutarlos.
-El smoke Compose usa proyecto, puertos y volúmenes de prueba propios. Esto no
-sustituye las pruebas de recuperación y negocio previstas en R05–R19.
+La aceptación integral actual es verify-system.ps1 y complementa los contextos
+con PostgreSQL, Kafka y reinicios reales. La demo de portfolio usa un proyecto propio;
+ver [demo.md](demo.md). Los reportes R01–R19 son evidencia histórica fechada.

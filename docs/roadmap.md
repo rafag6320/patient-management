@@ -446,3 +446,18 @@ y aprobación del entorno AWS. La emulación se limita a lo efectivamente probad
 - [ ] Se actualizó la documentación afectada y se registraron las decisiones nuevas.
 - [ ] Se identificaron riesgos residuales y comportamiento no verificado.
 - [ ] No se confundió evidencia histórica con verificaciones de la implementación actual.
+
+## Entrega pública de portfolio
+
+El README en inglés presenta alcance, tecnologías, atribución y límites. Las guías
+actuales y la demo permanecen en español. Esta entrega conserva los contratos y
+las migraciones; agrega un entorno de demostración aislado con Start/Run/Stop.
+
+La referencia pública es el release v1.0.0 y la CI de su commit exacto, enlazada
+en sus notas. Los reportes R01–R19 anteriores siguen siendo evidencia histórica
+fechada; no se actualizan sus resultados para atribuirlos a esta versión.
+
+La demo usa sólo datos sintéticos y recursos propios, conserva volúmenes al detener
+el entorno y no publica bases ni servicios internos. El origen del tutorial y
+las mejoras posteriores están distinguidos en el README. No se afirma despliegue
+AWS, uso clínico ni operación productiva. Guía: [demo.md](demo.md).

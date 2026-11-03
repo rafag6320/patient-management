@@ -1,0 +1,744 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Patient Management — patient interno",
+    "version": "1.0.0",
+    "description": "Acceso directo de desarrollo/operación. No atraviesa los filtros JWT del gateway; requiere red privada. Desde Swagger en el navegador puede requerir CORS/red; importar el JSON en Postman para acceso directo. Esta documentación no agrega puertos ni rutas públicas."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:4000",
+      "description": "Proceso local; requiere que el puerto esté publicado si se usa Docker."
+    },
+    {
+      "url": "http://patient-service:4000",
+      "description": "DNS de la red Docker, no resoluble habitualmente desde el navegador del host."
+    }
+  ],
+  "tags": [
+    {
+      "name": "Pacientes"
+    },
+    {
+      "name": "Autenticación"
+    },
+    {
+      "name": "Analytics"
+    },
+    {
+      "name": "Operación"
+    }
+  ],
+  "paths": {
+    "/patients": {
+      "get": {
+        "operationId": "patient_listPatients",
+        "tags": [
+          "Pacientes"
+        ],
+        "summary": "Listar pacientes",
+        "description": "Acceso directo al servicio. Devuelve todos los pacientes, sin paginación. Sin validación JWT local; la política de roles se aplica en el gateway.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/CorrelationId"
+          }
+        ],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Lista de pacientes.",
+            "headers": {
+              "X-Correlation-Id": {
+                "description": "Identificador conservado si es válido; generado si falta o es inválido.",
+                "schema": {
+                  "type": "string"
+                },
+                "example": "demo-request-01"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Patient"
+                  }
+                },
+                "example": [
+                  {
+                    "id": "8c820e3b-83ef-4536-8327-26e8990bd608",
+                    "name": "Ana Pérez",
+                    "email": "ana@example.com",
+                    "address": "Calle Ejemplo 123",
+                    "dateOfBirth": "1990-05-20",
+                    "dni": "30123456"
+                  }
+                ]
+              }
+            }
+          },
+          "503": {
+            "description": "Almacenamiento no disponible; para POST billing también puede seguir pendiente. Repetir el alta con la misma Idempotency-Key.",
+            "headers": {
+              "X-Correlation-Id": {
+                "description": "Identificador conservado si es válido; generado si falta o es inválido.",
+                "schema": {
+                  "type": "string"
+                },
+                "example": "demo-request-01"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Fallo interno inesperado; cuerpo del framework no uniforme.",
+            "headers": {
+              "X-Correlation-Id": {
+                "description": "Identificador conservado si es válido; generado si falta o es inválido.",
+                "schema": {
+                  "type": "string"
+                },
+                "example": "demo-request-01"
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "patient_createPatient",
+        "tags": [
+          "Pacientes"
+        ],
+        "summary": "Crear o recuperar un alta",
+        "description": "Acceso directo al servicio. El mismo Idempotency-Key con el mismo payload lógico recupera el snapshot original aunque el paciente se haya actualizado. Fechas y DNI se normalizan; nombre, email y dirección se comparan exactamente. Un 503 puede corresponder a un alta pendiente/incierta: reutilizar la clave, no generar otra. Kafka y analytics se recuperan en segundo plano después del 200. Sin validación JWT local; la política de roles se aplica en el gateway.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/CorrelationId"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Paciente persistido, billing confirmado y evento registrado durablemente. Puede faltar entrega Kafka/analytics.",
+            "headers": {
+              "X-Correlation-Id": {
+                "description": "Identificador conservado si es válido; generado si falta o es inválido.",
+                "schema": {
+                  "type": "string"
+                },
+                "example": "demo-request-01"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Patient"
+                },
+                "example": {
+                  "id": "8c820e3b-83ef-4536-8327-26e8990bd608",
+                  "name": "Ana Pérez",
+                  "email": "ana@example.com",
+                  "address": "Calle Ejemplo 123",
+                  "dateOfBirth": "1990-05-20",
+                  "dni": "30123456"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validación fallida, Idempotency-Key inválida o email/DNI duplicados con otra clave o sin clave.",
+            "headers": {
+              "X-Correlation-Id": {
+                "description": "Identificador conservado si es válido; generado si falta o es inválido.",
+                "schema": {
+                  "type": "string"
+                },
+                "example": "demo-request-01"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Clave reutilizada con payload diferente o con un alta cuyo recurso ya fue eliminado.",
+            "headers": {
+              "X-Correlation-Id": {
+                "description": "Identificador conservado si es válido; generado si falta o es inválido.",
+                "schema": {
+                  "type": "string"
+                },
+                "example": "demo-request-01"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Almacenamiento no disponible; para POST billing también puede seguir pendiente. Repetir el alta con la misma Idempotency-Key.",
+            "headers": {
+              "X-Correlation-Id": {
+                "description": "Identificador conservado si es válido; generado si falta o es inválido.",
+                "schema": {
+                  "type": "string"
+                },
+                "example": "demo-request-01"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Fallo interno inesperado; cuerpo del framework no uniforme.",
+            "headers": {
+              "X-Correlation-Id": {
+                "description": "Identificador conservado si es válido; generado si falta o es inválido.",
+                "schema": {
+                  "type": "string"
+                },
+                "example": "demo-request-01"
+              }
+            }
+          },
+          "502": {
+            "description": "Billing rechazó la solicitud o devolvió una respuesta inválida; requiere revisión.",
+            "headers": {
+              "X-Correlation-Id": {
+                "description": "Identificador conservado si es válido; generado si falta o es inválido.",
+                "schema": {
+                  "type": "string"
+                },
+                "example": "demo-request-01"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatientCreate"
+              },
+              "example": {
+                "name": "Ana Pérez",
+                "email": "ana@example.com",
+                "address": "Calle Ejemplo 123",
+                "dateOfBirth": "1990-05-20",
+                "registeredDate": "2026-10-31",
+                "DNI": "30123456"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/patients/{id}": {
+      "put": {
+        "operationId": "patient_updatePatient",
+        "tags": [
+          "Pacientes"
+        ],
+        "summary": "Actualizar paciente",
+        "description": "Acceso directo al servicio. registeredDate es opcional y no se modifica. No genera un nuevo PATIENT_CREATED. Sin validación JWT local; la política de roles se aplica en el gateway.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/CorrelationId"
+          },
+          {
+            "$ref": "#/components/parameters/PatientId"
+          }
+        ],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Paciente actualizado.",
+            "headers": {
+              "X-Correlation-Id": {
+                "description": "Identificador conservado si es válido; generado si falta o es inválido.",
+                "schema": {
+                  "type": "string"
+                },
+                "example": "demo-request-01"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Patient"
+                },
+                "example": {
+                  "id": "8c820e3b-83ef-4536-8327-26e8990bd608",
+                  "name": "Ana Pérez",
+                  "email": "ana@example.com",
+                  "address": "Calle Ejemplo 123",
+                  "dateOfBirth": "1990-05-20",
+                  "dni": "30123456"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Body inválido, UUID malformado o email/DNI duplicado.",
+            "headers": {
+              "X-Correlation-Id": {
+                "description": "Identificador conservado si es válido; generado si falta o es inválido.",
+                "schema": {
+                  "type": "string"
+                },
+                "example": "demo-request-01"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Paciente no encontrado.",
+            "headers": {
+              "X-Correlation-Id": {
+                "description": "Identificador conservado si es válido; generado si falta o es inválido.",
+                "schema": {
+                  "type": "string"
+                },
+                "example": "demo-request-01"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Billing del alta aún no está confirmado.",
+            "headers": {
+              "X-Correlation-Id": {
+                "description": "Identificador conservado si es válido; generado si falta o es inválido.",
+                "schema": {
+                  "type": "string"
+                },
+                "example": "demo-request-01"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Almacenamiento no disponible; para POST billing también puede seguir pendiente. Repetir el alta con la misma Idempotency-Key.",
+            "headers": {
+              "X-Correlation-Id": {
+                "description": "Identificador conservado si es válido; generado si falta o es inválido.",
+                "schema": {
+                  "type": "string"
+                },
+                "example": "demo-request-01"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Fallo interno inesperado; cuerpo del framework no uniforme.",
+            "headers": {
+              "X-Correlation-Id": {
+                "description": "Identificador conservado si es válido; generado si falta o es inválido.",
+                "schema": {
+                  "type": "string"
+                },
+                "example": "demo-request-01"
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatientUpdate"
+              },
+              "example": {
+                "name": "Ana Pérez",
+                "email": "ana@example.com",
+                "address": "Calle Ejemplo 123",
+                "dateOfBirth": "1990-05-20",
+                "DNI": "30123456"
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "patient_deletePatient",
+        "tags": [
+          "Pacientes"
+        ],
+        "summary": "Eliminar paciente",
+        "description": "Acceso directo al servicio. La eliminación no reduce el total histórico de analytics ni elimina la cuenta de billing. Sin validación JWT local; la política de roles se aplica en el gateway.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/CorrelationId"
+          },
+          {
+            "$ref": "#/components/parameters/PatientId"
+          }
+        ],
+        "security": [],
+        "responses": {
+          "204": {
+            "description": "Paciente eliminado; sin cuerpo.",
+            "headers": {
+              "X-Correlation-Id": {
+                "description": "Identificador conservado si es válido; generado si falta o es inválido.",
+                "schema": {
+                  "type": "string"
+                },
+                "example": "demo-request-01"
+              }
+            }
+          },
+          "400": {
+            "description": "UUID malformado; cuerpo del framework no uniforme.",
+            "headers": {
+              "X-Correlation-Id": {
+                "description": "Identificador conservado si es válido; generado si falta o es inválido.",
+                "schema": {
+                  "type": "string"
+                },
+                "example": "demo-request-01"
+              }
+            }
+          },
+          "404": {
+            "description": "Paciente no encontrado.",
+            "headers": {
+              "X-Correlation-Id": {
+                "description": "Identificador conservado si es válido; generado si falta o es inválido.",
+                "schema": {
+                  "type": "string"
+                },
+                "example": "demo-request-01"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Billing del alta aún no está confirmado.",
+            "headers": {
+              "X-Correlation-Id": {
+                "description": "Identificador conservado si es válido; generado si falta o es inválido.",
+                "schema": {
+                  "type": "string"
+                },
+                "example": "demo-request-01"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Almacenamiento no disponible; para POST billing también puede seguir pendiente. Repetir el alta con la misma Idempotency-Key.",
+            "headers": {
+              "X-Correlation-Id": {
+                "description": "Identificador conservado si es válido; generado si falta o es inválido.",
+                "schema": {
+                  "type": "string"
+                },
+                "example": "demo-request-01"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Fallo interno inesperado; cuerpo del framework no uniforme.",
+            "headers": {
+              "X-Correlation-Id": {
+                "description": "Identificador conservado si es válido; generado si falta o es inválido.",
+                "schema": {
+                  "type": "string"
+                },
+                "example": "demo-request-01"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "PatientCreate": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "description": "Obligatorio; no puede contener sólo espacios."
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "minLength": 1,
+            "maxLength": 255
+          },
+          "address": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Obligatorio; no puede contener sólo espacios."
+          },
+          "dateOfBirth": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+            "description": "Fecha calendario válida yyyy-MM-dd. Sin restricción de edad."
+          },
+          "registeredDate": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+            "description": "Obligatoria para crear. No se devuelve en la respuesta."
+          },
+          "DNI": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 10,
+            "pattern": "^[0-9]{1,10}$",
+            "description": "Mayúsculas en la petición. Valor numérico de 0 a 2147483647; admite ceros iniciales."
+          }
+        },
+        "required": [
+          "DNI",
+          "address",
+          "dateOfBirth",
+          "email",
+          "name",
+          "registeredDate"
+        ]
+      },
+      "PatientUpdate": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "description": "Obligatorio; no puede contener sólo espacios."
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "minLength": 1,
+            "maxLength": 255
+          },
+          "address": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Obligatorio; no puede contener sólo espacios."
+          },
+          "dateOfBirth": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+            "description": "Fecha calendario válida yyyy-MM-dd. Sin restricción de edad."
+          },
+          "registeredDate": {
+            "type": "string",
+            "nullable": true,
+            "description": "Opcional e ignorada al actualizar. Si se envía un valor no vacío debe ser fecha calendario yyyy-MM-dd. También admite null o espacios."
+          },
+          "DNI": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 10,
+            "pattern": "^[0-9]{1,10}$",
+            "description": "Mayúsculas en la petición. Valor numérico de 0 a 2147483647; admite ceros iniciales."
+          }
+        },
+        "required": [
+          "DNI",
+          "address",
+          "dateOfBirth",
+          "email",
+          "name"
+        ]
+      },
+      "Patient": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "address": {
+            "type": "string"
+          },
+          "dateOfBirth": {
+            "type": "string",
+            "format": "date"
+          },
+          "dni": {
+            "type": "string",
+            "description": "Minúsculas en la respuesta; valor numérico canónico, sin ceros iniciales."
+          }
+        },
+        "required": [
+          "address",
+          "dateOfBirth",
+          "dni",
+          "email",
+          "id",
+          "name"
+        ]
+      },
+      "ErrorBody": {
+        "description": "Los handlers de patient devuelven error o un mapa campo/mensaje. Errores del framework pueden tener otro cuerpo o estar vacíos. Auth y filtros JWT pueden responder sin cuerpo.",
+        "anyOf": [
+          {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "status": {
+                "type": "integer"
+              },
+              "detail": {
+                "type": "string"
+              },
+              "instance": {
+                "type": "string"
+              },
+              "timestamp": {
+                "type": "string"
+              },
+              "error": {
+                "type": "string"
+              },
+              "path": {
+                "type": "string"
+              }
+            }
+          }
+        ]
+      }
+    },
+    "parameters": {
+      "CorrelationId": {
+        "name": "X-Correlation-Id",
+        "in": "header",
+        "required": false,
+        "description": "Opcional. Se conserva si cumple [A-Za-z0-9._:-]{1,64}; en otro caso se genera un UUID y se devuelve en la respuesta. Un valor inválido no rechaza la petición.",
+        "schema": {
+          "type": "string"
+        },
+        "example": "demo-request-01"
+      },
+      "PatientId": {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "example": "8c820e3b-83ef-4536-8327-26e8990bd608"
+      },
+      "IdempotencyKey": {
+        "name": "Idempotency-Key",
+        "in": "header",
+        "required": false,
+        "description": "Recomendado para recuperar POST inciertos. Misma clave y payload lógico devuelve el snapshot original; cambiar el payload produce 409. Sin clave también se admite crear.",
+        "schema": {
+          "type": "string",
+          "minLength": 16,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9._:-]{16,128}$"
+        },
+        "example": "patient-demo-20261031-0001"
+      }
+    }
+  }
+}

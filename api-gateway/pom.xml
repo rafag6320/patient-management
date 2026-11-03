@@ -32,6 +32,11 @@
 		<spring-cloud.version>2025.1.3</spring-cloud.version>
 	</properties>
 	<dependencies>
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webflux-ui</artifactId>
+            <version>3.2.0</version>
+        </dependency>
         <!-- Boot 4 separa la autoconfiguración del cliente HTTP del servidor WebFlux. -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

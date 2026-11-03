@@ -1,6 +1,28 @@
 server:
   port: 4004
 
+springdoc:
+  api-docs:
+    version: OPENAPI_3_0
+  swagger-ui:
+    disable-swagger-default-url: true
+    persist-authorization: false
+    validator-url: ""
+    operations-sorter: alpha
+    tags-sorter: alpha
+    urls-primary-name: API publica (gateway)
+    urls:
+      - name: API publica (gateway)
+        url: /openapi/gateway.json
+      - name: Patient interno
+        url: /openapi/patient.json
+      - name: Auth interno
+        url: /openapi/auth.json
+      - name: Analytics interno
+        url: /openapi/analytics.json
+      - name: Operacion interna (Actuator)
+        url: /openapi/operations.json
+
 auth:
   service:
     url: ${AUTH_SERVICE_ADDRESS}

@@ -1,10 +1,11 @@
 # Decisiones y propuestas
 
-Los documentos previos estaban vacíos.
+Este registro conserva la evolución desde la auditoría inicial; los estados de
+entregas anteriores no sustituyen la arquitectura actual. Los documentos previos estaban vacíos.
 "Observada" significa verificable en el código; no implica conocer
 la motivación histórica ni recomendar conservar todos sus detalles.
 
-## Decisiones observadas
+## Decisiones observadas en la auditoría inicial (históricas)
 
 | ID | Estado | Decisión observable |
 |---|---|---|
@@ -204,7 +205,7 @@ despliegues externos.
   la semántica de coordinación (D18); la implementación sigue en R11–R12.
 - Evidencia y comandos en [verification-r09.md](verification-r09.md).
 
-## Decisiones aprobadas pendientes de implementación
+## Decisiones de recuperación y operación implementadas o preparadas
 
 ### D18 — Semántica del alta y recuperación (R10/P04)
 
@@ -310,6 +311,40 @@ despliegues externos.
   ACL, permisos efectivos, cuotas y presupuesto se revisan antes de aprobación.
 - Comandos, artefactos y fuentes oficiales en aws-deployment.md. Un template
   sintetizado no demuestra disponibilidad ni funcionamiento real en AWS.
+
+### D23 — Swagger central y catálogos explícitos (31/10/2026)
+
+- Adoptada por el pedido de documentar todos los endpoints con Swagger.
+- Gateway sirve Swagger UI mediante springdoc-openapi-starter-webflux-ui 3.2.0,
+  línea compatible con Spring Boot 4. No se cambian versiones de otros módulos.
+- OpenAPI 3.0.3 explícito para el contrato público y catálogos de patient, auth,
+  analytics y operación interna. Las rutas de gateway se implementan mediante
+  filtros: un escaneo de controladores del gateway no documentaría el negocio.
+  Se elige un contrato revisable con cobertura de rutas/DTO probada, en lugar
+  de añadir anotaciones y dependencias a todos los servicios.
+- `/v3/api-docs` reutiliza el catálogo público. El servidor público relativo
+  evita fijar el host del despliegue; los internos identifican sus direcciones
+  de desarrollo y las limitaciones de acceso/CORS. No se habilitan nuevos proxies.
+- Se documentan roles, validación, errores, idempotencia y consistencia eventual.
+  Billing conserva su Protobuf y se documenta como gRPC en swagger.md.
+- Consecuencia: cambios aprobados de contrato deben actualizar los JSON; los
+  tests detectan rutas faltantes, referencias rotas y diferencias entre los DTO
+  compartidos de los catálogos. No persiste JWT ni usa un validador externo.
+- Verificación y uso en swagger.md. No modifica datos, credenciales, reglas de
+  negocio, migraciones ni despliegues.
+
+### D24 — Entrega de portfolio y demo aislada (03/11/2026)
+
+- Aprobada en el plan de versión pública: README inglés, guías español, atribución
+  al curso original y desarrollo asistido con Codex.
+- Se reutiliza Compose con un override exclusivo, estado local y etiquetas de
+  propiedad. Sólo gateway se publica en loopback; Stop conserva los volúmenes.
+- Las operaciones de negocio no cambian. El script verifica desde fuera de las
+  aplicaciones el mismo flujo y sus efectos persistidos, sin acceso cruzado en servicios.
+- La entrega pública usa main y un release etiquetado con evidencia del commit
+  exacto; la publicación de código no autoriza despliegue AWS ni publicación de imágenes.
+- Alternativa descartada para esta entrega: demo sobre los volúmenes habituales,
+  por mezclar evaluación y datos de la instalación. No se incorpora licencia nueva.
 
 ## Propuestas pendientes de aprobación
 

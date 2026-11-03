@@ -1,0 +1,689 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Patient Management — operación interna",
+    "version": "1.0.0",
+    "description": "Endpoints de Actuator según la exposición configurada. No requieren JWT por sí mismos; proteger mediante red privada. Los servers de cada operación indican los servicios que la exponen. Las métricas y contadores son agregados, sin snapshots ni tokens. La visibilidad de componentes health depende de Spring Boot y no se muestran detalles por defecto."
+  },
+  "servers": [
+    {
+      "url": "/",
+      "description": "Gateway (mismo origen) sólo para discovery y health."
+    }
+  ],
+  "tags": [
+    {
+      "name": "Operación"
+    }
+  ],
+  "paths": {
+    "/actuator": {
+      "get": {
+        "operationId": "actuatorLinks",
+        "tags": [
+          "Operación"
+        ],
+        "summary": "Descubrir endpoints expuestos",
+        "description": "Acceso operativo directo; no se publica como /api en el gateway.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/CorrelationId"
+          }
+        ],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Consulta realizada.",
+            "headers": {
+              "X-Correlation-Id": {
+                "description": "Identificador conservado si es válido; generado si falta o es inválido.",
+                "schema": {
+                  "type": "string"
+                },
+                "example": "demo-request-01"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "_links": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "object",
+                        "properties": {
+                          "href": {
+                            "type": "string",
+                            "format": "uri"
+                          },
+                          "templated": {
+                            "type": "boolean"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "servers": [
+          {
+            "url": "http://localhost:4000",
+            "description": "patient local; requiere puerto accesible/publicado."
+          },
+          {
+            "url": "http://localhost:4001",
+            "description": "billing HTTP local; requiere puerto accesible/publicado."
+          },
+          {
+            "url": "http://localhost:4002",
+            "description": "analytics local; requiere puerto accesible/publicado."
+          },
+          {
+            "url": "http://localhost:4004",
+            "description": "gateway local; requiere puerto accesible/publicado."
+          },
+          {
+            "url": "http://localhost:4005",
+            "description": "auth local; requiere puerto accesible/publicado."
+          }
+        ]
+      }
+    },
+    "/actuator/health": {
+      "get": {
+        "operationId": "health",
+        "tags": [
+          "Operación"
+        ],
+        "summary": "Consultar salud",
+        "description": "Acceso operativo directo; no se publica como /api en el gateway.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/CorrelationId"
+          }
+        ],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Consulta realizada.",
+            "headers": {
+              "X-Correlation-Id": {
+                "description": "Identificador conservado si es válido; generado si falta o es inválido.",
+                "schema": {
+                  "type": "string"
+                },
+                "example": "demo-request-01"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "UP"
+                    }
+                  },
+                  "required": [
+                    "status"
+                  ]
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Estado DOWN u OUT_OF_SERVICE.",
+            "headers": {
+              "X-Correlation-Id": {
+                "description": "Identificador conservado si es válido; generado si falta o es inválido.",
+                "schema": {
+                  "type": "string"
+                },
+                "example": "demo-request-01"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "UP"
+                    }
+                  },
+                  "required": [
+                    "status"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "servers": [
+          {
+            "url": "http://localhost:4000",
+            "description": "patient local; requiere puerto accesible/publicado."
+          },
+          {
+            "url": "http://localhost:4001",
+            "description": "billing HTTP local; requiere puerto accesible/publicado."
+          },
+          {
+            "url": "http://localhost:4002",
+            "description": "analytics local; requiere puerto accesible/publicado."
+          },
+          {
+            "url": "http://localhost:4004",
+            "description": "gateway local; requiere puerto accesible/publicado."
+          },
+          {
+            "url": "http://localhost:4005",
+            "description": "auth local; requiere puerto accesible/publicado."
+          }
+        ]
+      }
+    },
+    "/actuator/health/{component}": {
+      "get": {
+        "operationId": "healthComponent",
+        "tags": [
+          "Operación"
+        ],
+        "summary": "Consultar salud de un componente visible",
+        "description": "Acceso operativo directo; no se publica como /api en el gateway.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/CorrelationId"
+          },
+          {
+            "name": "component",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Componente configurado, por ejemplo readiness si hay probes. Detalles ocultos por defecto; puede devolver 404."
+          }
+        ],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Consulta realizada.",
+            "headers": {
+              "X-Correlation-Id": {
+                "description": "Identificador conservado si es válido; generado si falta o es inválido.",
+                "schema": {
+                  "type": "string"
+                },
+                "example": "demo-request-01"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "UP"
+                    }
+                  },
+                  "required": [
+                    "status"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Componente inexistente o no visible.",
+            "headers": {
+              "X-Correlation-Id": {
+                "description": "Identificador conservado si es válido; generado si falta o es inválido.",
+                "schema": {
+                  "type": "string"
+                },
+                "example": "demo-request-01"
+              }
+            }
+          },
+          "503": {
+            "description": "Componente no disponible.",
+            "headers": {
+              "X-Correlation-Id": {
+                "description": "Identificador conservado si es válido; generado si falta o es inválido.",
+                "schema": {
+                  "type": "string"
+                },
+                "example": "demo-request-01"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "UP"
+                    }
+                  },
+                  "required": [
+                    "status"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "servers": [
+          {
+            "url": "http://localhost:4000",
+            "description": "patient local; requiere puerto accesible/publicado."
+          },
+          {
+            "url": "http://localhost:4001",
+            "description": "billing HTTP local; requiere puerto accesible/publicado."
+          },
+          {
+            "url": "http://localhost:4002",
+            "description": "analytics local; requiere puerto accesible/publicado."
+          },
+          {
+            "url": "http://localhost:4004",
+            "description": "gateway local; requiere puerto accesible/publicado."
+          },
+          {
+            "url": "http://localhost:4005",
+            "description": "auth local; requiere puerto accesible/publicado."
+          }
+        ]
+      }
+    },
+    "/actuator/metrics": {
+      "get": {
+        "operationId": "metricNames",
+        "tags": [
+          "Operación"
+        ],
+        "summary": "Listar métricas disponibles",
+        "description": "Acceso operativo directo; no se publica como /api en el gateway.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/CorrelationId"
+          }
+        ],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Consulta realizada.",
+            "headers": {
+              "X-Correlation-Id": {
+                "description": "Identificador conservado si es válido; generado si falta o es inválido.",
+                "schema": {
+                  "type": "string"
+                },
+                "example": "demo-request-01"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "names": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "names"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "servers": [
+          {
+            "url": "http://localhost:4000",
+            "description": "patient local; requiere puerto accesible/publicado."
+          },
+          {
+            "url": "http://localhost:4002",
+            "description": "analytics local; requiere puerto accesible/publicado."
+          }
+        ]
+      }
+    },
+    "/actuator/metrics/{requiredMetricName}": {
+      "get": {
+        "operationId": "metric",
+        "tags": [
+          "Operación"
+        ],
+        "summary": "Consultar métrica",
+        "description": "Acceso operativo directo; no se publica como /api en el gateway.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/CorrelationId"
+          },
+          {
+            "name": "requiredMetricName",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "jvm.memory.used"
+          },
+          {
+            "name": "tag",
+            "in": "query",
+            "required": false,
+            "description": "Filtros repetibles en formato clave:valor; deben existir para la métrica.",
+            "style": "form",
+            "explode": true,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "example": [
+              "area:heap"
+            ]
+          }
+        ],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Consulta realizada.",
+            "headers": {
+              "X-Correlation-Id": {
+                "description": "Identificador conservado si es válido; generado si falta o es inválido.",
+                "schema": {
+                  "type": "string"
+                },
+                "example": "demo-request-01"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "description": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "baseUnit": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "measurements": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "statistic": {
+                            "type": "string"
+                          },
+                          "value": {
+                            "type": "number"
+                          }
+                        }
+                      }
+                    },
+                    "availableTags": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "tag": {
+                            "type": "string"
+                          },
+                          "values": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "availableTags",
+                    "measurements",
+                    "name"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Métrica inexistente.",
+            "headers": {
+              "X-Correlation-Id": {
+                "description": "Identificador conservado si es válido; generado si falta o es inválido.",
+                "schema": {
+                  "type": "string"
+                },
+                "example": "demo-request-01"
+              }
+            }
+          },
+          "400": {
+            "description": "Filtros inválidos.",
+            "headers": {
+              "X-Correlation-Id": {
+                "description": "Identificador conservado si es válido; generado si falta o es inválido.",
+                "schema": {
+                  "type": "string"
+                },
+                "example": "demo-request-01"
+              }
+            }
+          }
+        },
+        "servers": [
+          {
+            "url": "http://localhost:4000",
+            "description": "patient local; requiere puerto accesible/publicado."
+          },
+          {
+            "url": "http://localhost:4002",
+            "description": "analytics local; requiere puerto accesible/publicado."
+          }
+        ]
+      }
+    },
+    "/actuator/registrations": {
+      "get": {
+        "operationId": "registrationWork",
+        "tags": [
+          "Operación"
+        ],
+        "summary": "Consultar trabajo durable de altas",
+        "description": "Acceso operativo directo; no se publica como /api en el gateway.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/CorrelationId"
+          }
+        ],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Consulta realizada.",
+            "headers": {
+              "X-Correlation-Id": {
+                "description": "Identificador conservado si es válido; generado si falta o es inválido.",
+                "schema": {
+                  "type": "string"
+                },
+                "example": "demo-request-01"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "billingPending": {
+                      "type": "integer",
+                      "format": "int64",
+                      "minimum": 0
+                    },
+                    "requiresReview": {
+                      "type": "integer",
+                      "format": "int64",
+                      "minimum": 0
+                    },
+                    "eventsPending": {
+                      "type": "integer",
+                      "format": "int64",
+                      "minimum": 0
+                    },
+                    "eventsConfirmed": {
+                      "type": "integer",
+                      "format": "int64",
+                      "minimum": 0
+                    },
+                    "recoveriesConfirmed": {
+                      "type": "integer",
+                      "format": "int64",
+                      "minimum": 0
+                    }
+                  },
+                  "required": [
+                    "billingPending",
+                    "eventsConfirmed",
+                    "eventsPending",
+                    "recoveriesConfirmed",
+                    "requiresReview"
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Fallo al consultar el almacenamiento.",
+            "headers": {
+              "X-Correlation-Id": {
+                "description": "Identificador conservado si es válido; generado si falta o es inválido.",
+                "schema": {
+                  "type": "string"
+                },
+                "example": "demo-request-01"
+              }
+            }
+          }
+        },
+        "servers": [
+          {
+            "url": "http://localhost:4000",
+            "description": "patient local; requiere puerto accesible/publicado."
+          }
+        ]
+      }
+    },
+    "/actuator/analyticswork": {
+      "get": {
+        "operationId": "analyticsWork",
+        "tags": [
+          "Operación"
+        ],
+        "summary": "Consultar contador y cuarentena",
+        "description": "Acceso operativo directo; no se publica como /api en el gateway.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/CorrelationId"
+          }
+        ],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Consulta realizada.",
+            "headers": {
+              "X-Correlation-Id": {
+                "description": "Identificador conservado si es válido; generado si falta o es inválido.",
+                "schema": {
+                  "type": "string"
+                },
+                "example": "demo-request-01"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "patientsCreated": {
+                      "type": "integer",
+                      "format": "int64",
+                      "minimum": 0
+                    },
+                    "quarantined": {
+                      "type": "integer",
+                      "format": "int64",
+                      "minimum": 0
+                    }
+                  },
+                  "required": [
+                    "patientsCreated",
+                    "quarantined"
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Fallo al consultar el almacenamiento.",
+            "headers": {
+              "X-Correlation-Id": {
+                "description": "Identificador conservado si es válido; generado si falta o es inválido.",
+                "schema": {
+                  "type": "string"
+                },
+                "example": "demo-request-01"
+              }
+            }
+          }
+        },
+        "servers": [
+          {
+            "url": "http://localhost:4002",
+            "description": "analytics local; requiere puerto accesible/publicado."
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {},
+    "parameters": {
+      "CorrelationId": {
+        "name": "X-Correlation-Id",
+        "in": "header",
+        "required": false,
+        "description": "Opcional. Se conserva si cumple [A-Za-z0-9._:-]{1,64}; en otro caso se genera un UUID y se devuelve en la respuesta. Un valor inválido no rechaza la petición.",
+        "schema": {
+          "type": "string"
+        },
+        "example": "demo-request-01"
+      }
+    }
+  }
+}
