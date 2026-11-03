@@ -24,8 +24,6 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '22'
-      - name: Enable Maven wrapper
-        run: chmod +x patient-service/mvnw
       - name: Compile and test isolated contexts
         run: ./scripts/verify.ps1 -WithContexts
       - name: Check portfolio documentation and scripts
