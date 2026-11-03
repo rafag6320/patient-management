@@ -72,7 +72,9 @@ OK: reinicio, recuperación y nueva repetición conservan el mismo ID y efectos 
 
 Cada acción guarda un reporte sanitizado report-*.json en `.verification/demo`.
 El diagnóstico Compose queda local en compose.log y no se adjunta al artefacto
-público de demo. No se imprime el JWT ni la configuración interpolada. Revisar
+público de demo. verify-demo-guards.ps1 comprueba rechazos esperados: esos reportes
+registran acciones fallidas deliberadas, mientras el check de protecciones debe pasar.
+No se imprime el JWT ni la configuración interpolada. Revisar
 cualquier log privado antes de compartirlo.
 
 ## Swagger
@@ -154,4 +156,3 @@ Preparar estas respuestas con ejemplos del código:
 - Microservicios versus monolito modular: aprendizaje y costos de operación.
 - Base del tutorial versus mejoras posteriores: historial, decisiones y revisión
   del trabajo asistido por Codex.
-

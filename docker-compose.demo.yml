@@ -1,0 +1,44 @@
+# Used only by scripts/demo.ps1. Replace port lists instead of appending to them.
+x-owned: &owned
+  labels:
+    com.pm.demo.owner: ${PM_DEMO_OWNER:?Use scripts/demo.ps1}
+
+services:
+  patient-service:
+    <<: *owned
+  auth-service:
+    <<: *owned
+    ports: !override []
+  billing-service:
+    <<: *owned
+  analytics-service:
+    <<: *owned
+    ports: !override []
+  api-gateway:
+    <<: *owned
+    ports: !override ["127.0.0.1:44004:4004"]
+  patient-db:
+    <<: *owned
+    ports: !override []
+  auth-db:
+    <<: *owned
+    ports: !override []
+  billing-db:
+    <<: *owned
+    ports: !override []
+  analytics-db:
+    <<: *owned
+    ports: !override []
+  kafka:
+    <<: *owned
+    ports: !override []
+
+volumes:
+  patient-db-data: *owned
+  auth-db-data: *owned
+  billing-db-data: *owned
+  analytics-db-data: *owned
+  kafka-data: *owned
+
+networks:
+  default: *owned

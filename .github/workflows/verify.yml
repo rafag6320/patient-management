@@ -28,6 +28,8 @@ jobs:
         run: chmod +x patient-service/mvnw
       - name: Compile and test isolated contexts
         run: ./scripts/verify.ps1 -WithContexts
+      - name: Check portfolio documentation and scripts
+        run: ./scripts/check-portfolio.ps1
       - name: PostgreSQL migration and recovery checks
         run: |
           ./scripts/verify-migrations-postgres.ps1
@@ -39,6 +41,24 @@ jobs:
         run: ./scripts/verify-localstack.ps1
       - name: Build all images and run full-system acceptance
         run: ./scripts/verify-system.ps1
+      - name: Run portfolio demo twice and preserve data across Stop and Start
+        run: |
+          try {
+            ./scripts/demo.ps1 -Action Start
+            if ($LASTEXITCODE -ne 0) { throw 'Demo Start failed' }
+            ./scripts/demo.ps1 -Action Run
+            if ($LASTEXITCODE -ne 0) { throw 'First demo Run failed' }
+            ./scripts/demo.ps1 -Action Stop
+            if ($LASTEXITCODE -ne 0) { throw 'Demo Stop failed' }
+            ./scripts/verify-demo-guards.ps1
+            ./scripts/demo.ps1 -Action Start
+            if ($LASTEXITCODE -ne 0) { throw 'Second demo Start failed' }
+            ./scripts/demo.ps1 -Action Run
+            if ($LASTEXITCODE -ne 0) { throw 'Second demo Run failed' }
+          } finally {
+            ./scripts/demo.ps1 -Action Stop
+            if ($LASTEXITCODE -ne 0) { throw 'Demo cleanup failed' }
+          }
       - name: Preserve reports even when a check fails
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -50,4 +70,5 @@ jobs:
             .verification/**/failsafe-reports/**
             .verification/infrastructure/cdk.out/**
             .verification/*.log
+            .verification/demo/report-*.json
           retention-days: 14
