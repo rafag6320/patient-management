@@ -25,6 +25,14 @@ class SystemTestSupport {
             .post("/api/auth/login").then().statusCode(200).extract().path("token");
     }
     static String token() {return token("testuser@test.com");}
+    static void awaitPatientRoute(String token) {
+        // Compose health checks the new container, not the gateway's cached connection/DNS.
+        await(()->{
+            int status=given().baseUri(gateway()).header("Authorization","Bearer "+token).get("/api/patients").statusCode();
+            assertTrue(status==200 || status==503,"Unexpected gateway readiness response: "+status);
+            return status==200;
+        });
+    }
     static Map<String,Object> patient() {
         return new LinkedHashMap<>(Map.of("name","Synthetic Integration","email","synthetic-"+UUID.randomUUID()+"@example.com",
             "address","Synthetic address","dateOfBirth","1990-01-01","registeredDate","2026-10-30","DNI",Integer.toString(java.util.concurrent.ThreadLocalRandom.current().nextInt(1000000,2000000000))));
