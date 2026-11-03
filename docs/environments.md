@@ -1,4 +1,4 @@
-# Perfiles y configuración — R08
+# Perfiles y configuración actuales
 
 ## Perfiles
 
@@ -12,7 +12,7 @@
 
 Compose activa `docker` en las cinco aplicaciones. Es un entorno de desarrollo,
 no una configuración de despliegue productivo. No combinar `prod` con `local` o
-`docker`. Auth, patient y billing tampoco permiten combinar `prod` y `test`.
+`docker`. Auth, patient, billing y analytics tampoco permiten combinar `prod` y `test`.
 Gateway conserva la combinación test/prod únicamente para sus pruebas de rutas
 con upstreams en loopback; no contiene H2 ni seed.
 
@@ -28,8 +28,8 @@ disponibilidad de redes ni la validez efectiva de credenciales.
 | --- | --- |
 | auth | SPRING_DATASOURCE_URL, SPRING_DATASOURCE_USERNAME, SPRING_DATASOURCE_PASSWORD, JWT_SECRET |
 | patient | SPRING_DATASOURCE_URL, SPRING_DATASOURCE_USERNAME, SPRING_DATASOURCE_PASSWORD, BILLING_SERVICE_ADDRESS, BILLING_SERVICE_PORT, SPRING_KAFKA_BOOTSTRAP_SERVERS (o KAFKA_BOOTSTRAP_SERVERS) |
-| analytics | SPRING_KAFKA_BOOTSTRAP_SERVERS (o KAFKA_BOOTSTRAP_SERVERS) |
-| gateway | AUTH_SERVICE_ADDRESS, PATIENT_SERVICE_ADDRESS |
+| analytics | SPRING_DATASOURCE_URL, SPRING_DATASOURCE_USERNAME, SPRING_DATASOURCE_PASSWORD, SPRING_KAFKA_BOOTSTRAP_SERVERS (o KAFKA_BOOTSTRAP_SERVERS) |
+| gateway | AUTH_SERVICE_ADDRESS, PATIENT_SERVICE_ADDRESS, ANALYTICS_SERVICE_ADDRESS |
 | billing | SPRING_DATASOURCE_URL, SPRING_DATASOURCE_USERNAME, SPRING_DATASOURCE_PASSWORD; SERVER_PORT y GRPC_SERVER_PORT conservan valores comunes 4001 y 9001 |
 
 Se aceptan también las propiedades equivalentes de Spring por argumentos u otras
@@ -90,7 +90,7 @@ No se eliminan administradores ni usuarios previamente creados. La separación
 controla futuras ejecuciones del seed; cualquier intervención sobre cuentas
 existentes necesita alcance y autorización propios.
 
-H2 tiene scope test en auth, patient y billing; se retira spring-boot-h2console de patient.
+H2 tiene scope test en auth, patient, billing y analytics; se retira spring-boot-h2console de patient.
 Los JAR ejecutables no deben incluir el driver H2 ni consola. Además, los
 datasources fuera de test deben tener URL PostgreSQL. Activar un nombre de perfil
 no instala el driver ni incorpora los recursos de src/test al artefacto de producción.

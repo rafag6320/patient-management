@@ -37,12 +37,10 @@ acreditara la adopción de V1; el rechazo es la protección prevista en
    baseline automático ni se borraron volúmenes. El PostgreSQL temporal de
    restauración se eliminó; los backups se conservaron.
 
-Los backups de esta operación están en la carpeta local
-`C:\Users\Usuario\Documents\patient-management-backups\20261031-041216`
-(`patient.dump` y `auth.dump`). Contienen datos de la instalación y deben
-permanecer fuera de Git. Los logs de mantenimiento están ignorados por Git en
-`.verification-adoption-copy-*.log` y `.verification-adoption-original-*.log`.
-Esta ruta identifica esta operación, no configura las bases de la aplicación.
+Los backups de esta operación se conservaron en una carpeta externa al repositorio.
+Cada instalación debe registrar privadamente su ubicación y comprobar restauración.
+No incorporar dumps ni datos personales a Git. Los logs de mantenimiento quedan
+ignorados bajo .verification; la ubicación de una copia no configura la aplicación.
 
 Este procedimiento no debe repetirse automáticamente en otras instalaciones.
 Una base con diferencias de esquema requiere su propia reconciliación; el
