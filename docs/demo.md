@@ -38,6 +38,10 @@ asociado a este checkout. Los recursos llevan una etiqueta de propiedad, validad
 antes de operar. No editar ni copiar el estado a otra carpeta. Sólo el gateway
 se publica en loopback; el override reemplaza las publicaciones originales.
 
+El override concede a PostgreSQL 60s de gracia de inicialización y 20 intentos
+de healthcheck, conservando pg_isready y el límite externo de espera de 300s.
+Una base disponible se reconoce de inmediato; no es una pausa fija ni se desactiva fsync.
+
 Un puerto 44004 ocupado, un estado inválido o recursos sin identidad bloquean
 la acción sin detener otro entorno. Si se interrumpe la consola, ejecutar Start
 antes de Run; el trabajo durable puede terminar al recuperarse billing. No hay
