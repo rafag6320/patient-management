@@ -51,10 +51,15 @@ class LostReplyIntegrationTest extends SystemTestSupport {
             assertEquals(1,count("billing","SELECT count(*) FROM billing_account WHERE patient_id=?",id));
             await(()->count("analytics","SELECT count(*) FROM processed_patient_event WHERE patient_id=?",UUID.fromString(id))==1);
         } finally {
-            compose(null,"up","-d","--force-recreate","--wait","--wait-timeout","120","patient-service");
-            awaitPatientRoute(token());
-            proxy.shutdownNow().awaitTermination(3,TimeUnit.SECONDS);backend.shutdownNow().awaitTermination(3,TimeUnit.SECONDS);
-            Files.deleteIfExists(override);
+            try {
+                compose(null,"up","-d","--force-recreate","--wait","--wait-timeout","120","patient-service");
+                awaitPatientRoute(token());
+            } finally {
+                proxy.shutdownNow();backend.shutdownNow();
+                try {
+                    proxy.awaitTermination(3,TimeUnit.SECONDS);backend.awaitTermination(3,TimeUnit.SECONDS);
+                } finally {Files.deleteIfExists(override);}
+            }
         }
     }
 }
