@@ -311,6 +311,27 @@ despliegues externos.
 - Comandos, artefactos y fuentes oficiales en aws-deployment.md. Un template
   sintetizado no demuestra disponibilidad ni funcionamiento real en AWS.
 
+### D23 — Swagger central y catálogos explícitos (31/10/2026)
+
+- Adoptada por el pedido de documentar todos los endpoints con Swagger.
+- Gateway sirve Swagger UI mediante springdoc-openapi-starter-webflux-ui 3.2.0,
+  línea compatible con Spring Boot 4. No se cambian versiones de otros módulos.
+- OpenAPI 3.0.3 explícito para el contrato público y catálogos de patient, auth,
+  analytics y operación interna. Las rutas de gateway se implementan mediante
+  filtros: un escaneo de controladores del gateway no documentaría el negocio.
+  Se elige un contrato revisable con cobertura de rutas/DTO probada, en lugar
+  de añadir anotaciones y dependencias a todos los servicios.
+- `/v3/api-docs` reutiliza el catálogo público. El servidor público relativo
+  evita fijar el host del despliegue; los internos identifican sus direcciones
+  de desarrollo y las limitaciones de acceso/CORS. No se habilitan nuevos proxies.
+- Se documentan roles, validación, errores, idempotencia y consistencia eventual.
+  Billing conserva su Protobuf y se documenta como gRPC en swagger.md.
+- Consecuencia: cambios aprobados de contrato deben actualizar los JSON; los
+  tests detectan rutas faltantes, referencias rotas y diferencias entre los DTO
+  compartidos de los catálogos. No persiste JWT ni usa un validador externo.
+- Verificación y uso en swagger.md. No modifica datos, credenciales, reglas de
+  negocio, migraciones ni despliegues.
+
 ## Propuestas pendientes de aprobación
 
 | ID | Propuesta | Motivo y condición |

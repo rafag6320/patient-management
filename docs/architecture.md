@@ -33,6 +33,12 @@ JDBC y PostgreSQL propio para deduplicación y su resultado histórico.
 - Gateway: enrutar HTTP y consultar a auth para validar JWT.
 
 ## Contratos HTTP actuales
+
+El inventario completo, ejemplos, seguridad y errores están en
+[swagger.md](swagger.md). El gateway sirve Swagger UI en `/swagger-ui.html`,
+el contrato público en `/v3/api-docs` y cinco catálogos en `/openapi/*.json`.
+La documentación no agrega proxies ni exposición de puertos internos.
+
 Patient:
 - GET /patients: 200 con una lista.
 - POST /patients: 200 con el paciente creado.

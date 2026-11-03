@@ -1,0 +1,116 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Patient Management — analytics interno",
+    "version": "1.0.0",
+    "description": "Acceso directo de desarrollo/operación. No atraviesa los filtros JWT del gateway; requiere red privada. Desde Swagger en el navegador puede requerir CORS/red; importar el JSON en Postman para acceso directo. Esta documentación no agrega puertos ni rutas públicas."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:4002",
+      "description": "Proceso local; requiere que el puerto esté publicado si se usa Docker."
+    },
+    {
+      "url": "http://analytics-service:4002",
+      "description": "DNS de la red Docker, no resoluble habitualmente desde el navegador del host."
+    }
+  ],
+  "tags": [
+    {
+      "name": "Pacientes"
+    },
+    {
+      "name": "Autenticación"
+    },
+    {
+      "name": "Analytics"
+    },
+    {
+      "name": "Operación"
+    }
+  ],
+  "paths": {
+    "/analytics/summary": {
+      "get": {
+        "operationId": "analytics_analyticsSummary",
+        "tags": [
+          "Analytics"
+        ],
+        "summary": "Consultar altas históricas",
+        "description": "Acceso directo al servicio. Consistencia eventual con el alta: esperar a la entrega Kafka y al procesamiento. Deduplicación por tipo de evento y patientId. Sin validación JWT local; la política de roles se aplica en el gateway.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/CorrelationId"
+          }
+        ],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Total histórico.",
+            "headers": {
+              "X-Correlation-Id": {
+                "description": "Identificador conservado si es válido; generado si falta o es inválido.",
+                "schema": {
+                  "type": "string"
+                },
+                "example": "demo-request-01"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalyticsSummary"
+                },
+                "example": {
+                  "patientsCreated": 42
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Fallo interno, incluido almacenamiento de analytics; cuerpo del framework no uniforme.",
+            "headers": {
+              "X-Correlation-Id": {
+                "description": "Identificador conservado si es válido; generado si falta o es inválido.",
+                "schema": {
+                  "type": "string"
+                },
+                "example": "demo-request-01"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AnalyticsSummary": {
+        "type": "object",
+        "properties": {
+          "patientsCreated": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "description": "Altas históricas distintas PATIENT_CREATED por patientId. No es el total de pacientes activos; PUT/DELETE no lo reducen."
+          }
+        },
+        "required": [
+          "patientsCreated"
+        ]
+      }
+    },
+    "parameters": {
+      "CorrelationId": {
+        "name": "X-Correlation-Id",
+        "in": "header",
+        "required": false,
+        "description": "Opcional. Se conserva si cumple [A-Za-z0-9._:-]{1,64}; en otro caso se genera un UUID y se devuelve en la respuesta. Un valor inválido no rechaza la petición.",
+        "schema": {
+          "type": "string"
+        },
+        "example": "demo-request-01"
+      }
+    }
+  }
+}

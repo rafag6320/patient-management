@@ -2,6 +2,9 @@
 
 Backend Java 21 con cinco aplicaciones Spring Boot, PostgreSQL, gRPC y Kafka.
 
+**Swagger:** [http://localhost:4004/swagger-ui.html](http://localhost:4004/swagger-ui.html).
+Consultar la [guía de endpoints HTTP, operación y billing gRPC](docs/swagger.md).
+
 **Bases existentes:** antes de arrancar esta versión con los volúmenes anteriores,
 seguir [la adopción de migraciones](docs/migrations.md). Flyway no registra un
 baseline automáticamente y Hibernate ya no actualiza esquemas.

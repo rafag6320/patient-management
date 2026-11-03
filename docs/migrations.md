@@ -28,9 +28,12 @@ patient/auth hasta completar el procedimiento siguiente. No borrar los volúmene
 
 ## Adopción de bases existentes
 
-Este procedimiento **no se ejecutó sobre bases del desarrollador**. Se probó
-con datos sintéticos y copias de esquemas generados por Hibernate en PostgreSQL 16
-efímero. Antes de aplicarlo a una base real:
+La verificación inicial se realizó con datos sintéticos y copias de esquemas
+generados por Hibernate en PostgreSQL 16 efímero. El 31/10/2026 se adoptaron
+también las bases anteriores de esta instalación Compose, tras backup,
+restauración y validación en copias; evidencia en
+[compose-troubleshooting.md](compose-troubleshooting.md).
+Antes de aplicarlo a otra base real:
 
 1. Detener las escrituras del servicio propietario y confirmar host, puerto,
    nombre de base, usuario y esquema. Patient y auth se adoptan por separado.
@@ -125,4 +128,5 @@ Se probaron convergencia/adopción y rollback con el esquema extendido. El test
 transaccional usa una V99 temporal nunca aplicada, para no reutilizar versiones
 reales. Ninguna migración aplicada del repositorio se modifica para esos tests.
 La política de snapshots, retención y reanudación del trabajo está documentada
-en recovery-operations.md; no se ejecutó mantenimiento sobre bases personales.
+en recovery-operations.md. Esos ensayos no ejecutaron mantenimiento sobre bases
+personales; la adopción posterior de esta instalación se registra arriba.
