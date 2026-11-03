@@ -1,9 +1,9 @@
-# Demo de portfolio — Patient Management
+# Demo local — Patient Management
 
 ## Propósito y requisitos
 
-Backend educativo para postulaciones Java junior. No es un producto clínico ni
-requiere AWS. Todos los pacientes de la demo son sintéticos.
+La demo ejecuta el flujo de alta y su recuperación con datos sintéticos.
+No requiere AWS ni un JDK en el host.
 
 Requisitos: Git, PowerShell **7**, Docker Engine con contenedores Linux y Docker
 Compose **2.24.4 o superior**. El primer build necesita internet para imágenes y
@@ -102,7 +102,7 @@ los límites de auth ni reintenta las aserciones de los escenarios. La regresió
 `scripts/verify-readiness-probe.ps1` comprueba ese comportamiento con un servidor
 local ficticio (requiere Node 22, ya instalado por CI); la demo no requiere Node.
 
-## Flujo y guion de cinco minutos
+## Flujo del alta
 
 ```mermaid
 sequenceDiagram
@@ -127,43 +127,3 @@ El 200 confirma paciente, cuenta e intención durable; no espera Kafka/analytics
 Un 503 puede dejar un paciente visible: no hay rollback global. El dispatcher
 recupera el avance; billing y analytics evitan duplicar efectos. No se promete
 exactly-once. Ver [semántica del alta](patient-registration-semantics.md).
-
-| Tiempo | Contenido |
-| --- | --- |
-| 0:00–0:45 | Problema, alcance educativo y atribución al curso de Chris Blakely. |
-| 0:45–1:30 | Diagrama: REST, RPC y eventos posteriores. |
-| 1:30–2:15 | Swagger, autenticación y alta idempotente. |
-| 2:15–4:00 | Demo/reporte de fallo y recuperación; explicar el resultado incierto. |
-| 4:00–5:00 | Test de recuperación, CI del release, límites y mejoras posteriores. |
-
-Construir las imágenes antes de presentar. El lease/backoff puede prolongar la
-recuperación: para un video corto se puede mostrar un reporte de la misma versión,
-aclarando que es evidencia anterior. La grabación no forma parte de esta entrega.
-
-## CV e entrevista
-
-Texto sugerido en inglés, ajustándolo a lo que se pueda defender personalmente:
-
-> **Patient Management — Java Backend Portfolio Project**
->
-> Extended a Java/Spring Boot course project with persistent, idempotent billing,
-> Flyway migrations, durable registration recovery and deduplicated Kafka analytics.
-> Added automated unit, integration and failure-recovery checks, GitHub Actions and
-> centralized API documentation. Prepared AWS CDK templates; no live AWS deployment
-> is claimed. Development assisted by Codex.
-
-Enlazar repositorio/release desde el CV. No inventar experiencia productiva,
-cantidades de usuarios ni mejoras de rendimiento sin mediciones.
-
-Preparar estas respuestas con ejemplos del código:
-
-- DTO versus UNIQUE: servicio de pacientes, repositorio y carrera concurrente.
-- Límite de una transacción: RegistrationStore no confirma gRPC ni Kafka.
-- Timeout con cuenta creada: LostReplyIntegrationTest y unicidad por patientId.
-- Garantía del 200: RegistrationCoordinator y la semántica del alta.
-- Repetición de POST: clave, fingerprint, snapshot y conflictos.
-- Repetición de evento: AnalyticsStore y restricción única del efecto.
-- Qué cubre H2 y qué exige PostgreSQL/Kafka: [grupos de tests](local-development.md).
-- Microservicios versus monolito modular: aprendizaje y costos de operación.
-- Base del tutorial versus mejoras posteriores: historial, decisiones y revisión
-  del trabajo asistido por Codex.

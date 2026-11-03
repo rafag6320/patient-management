@@ -26,8 +26,8 @@ jobs:
           node-version: '22'
       - name: Compile and test isolated contexts
         run: ./scripts/verify.ps1 -WithContexts
-      - name: Check portfolio documentation and scripts
-        run: ./scripts/check-portfolio.ps1
+      - name: Check documentation and scripts
+        run: ./scripts/check-docs.ps1
       - name: Check functional readiness probe behavior
         run: ./scripts/verify-readiness-probe.ps1
       - name: PostgreSQL migration and recovery checks
@@ -41,7 +41,7 @@ jobs:
         run: ./scripts/verify-localstack.ps1
       - name: Build all images and run full-system acceptance
         run: ./scripts/verify-system.ps1
-      - name: Run portfolio demo twice and preserve data across Stop and Start
+      - name: Run demo twice and preserve data across Stop and Start
         run: |
           try {
             ./scripts/demo.ps1 -Action Start

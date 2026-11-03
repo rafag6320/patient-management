@@ -1,6 +1,6 @@
-# Recuperación y operación local — R11–R17
+# Recuperación y operación local
 
-La semántica pública acordada está en patient-registration-semantics.md (D18).
+La [semántica del alta](patient-registration-semantics.md) define las garantías públicas.
 El alta guarda paciente y registration_work en una transacción local, intenta
 billing una vez y responde. Kafka se publica después desde el registro durable.
 
@@ -64,7 +64,7 @@ WHERE patient_id=CAST(:patient_id AS uuid) AND billing_status='REVIEW'
 
 El parámetro se debe enlazar, no interpolar desde entrada sin validar. Comprobar
 que se modificó una única fila. No regenerar patientId, borrar cuentas, forzar
-CONFIRMED ni vaciar colas. Esta tarea no ejecuta mantenimiento en datos personales.
+CONFIRMED ni vaciar colas. El mantenimiento debe realizarse en el entorno del servicio propietario.
 Los snapshots/claves se retienen; cualquier purga requerirá política y aprobación.
 
 ## Analytics y mensajes fallidos
@@ -90,7 +90,7 @@ ADMIN puede ejecutar CRUD y consultar analytics. USER sólo puede consultar las
 listas y el resumen; otros roles no autorizan. Auth verifica el JWT y responde
 X-Validated-Roles; el gateway elimina ese encabezado del cliente y utiliza sólo
 los roles devueltos por auth. Token ausente/inválido: 401; rol insuficiente: 403;
-auth no disponible: 502. No se modificaron usuarios ni credenciales existentes.
+auth no disponible: 502. Los roles se obtienen de usuarios persistidos en auth.
 
 La política se aplica en el gateway. Los servicios internos no añaden una segunda
 validación JWT en esta etapa: mantenerlos privados. Los puertos directos Compose
@@ -123,5 +123,4 @@ por defecto compila sus tests, sin contactar localhost ni usar un datasource imp
 
 `.github/workflows/verify.yml` ejecuta estos grupos en Ubuntu/Java 21/Node 22,
 construye las cinco imágenes y conserva XML/logs/templates incluso si hay fallos.
-La ejecución real en GitHub se aprobó para d197f7b. Enlace y evidencia se registran
-por separado de los tests locales en verification-r11-r19.md.
+Las notas de release enlazan el commit publicado y su ejecución de CI.

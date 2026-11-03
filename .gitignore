@@ -2,6 +2,7 @@
 **/target-*.log
 **/cdk.out/
 .idea/
+.vscode/
 *.iml
 .env
 .env.*

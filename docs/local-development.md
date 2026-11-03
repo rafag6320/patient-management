@@ -3,8 +3,7 @@
 ## Herramientas y checkout
 
 Repositorio público: <https://github.com/rafag6320/patient-management>.
-El release de portfolio identifica el commit y su CI. El historial inicial sin Git
-se conserva en b44e478; los reportes R01–R19 describen ejecuciones anteriores.
+Las notas de cada release enlazan su commit y ejecución de CI.
 Para ver el estado actual: `git remote -v`, `git rev-parse HEAD`, `git status --short`.
 
 Para la demo Docker seguir [demo.md](demo.md): no necesita JDK en el host. Para los
@@ -36,7 +35,7 @@ no fijan el parche/digest, por lo que no se garantiza reproducción bit a bit.
 | Recuperación PostgreSQL | `./scripts/verify-recovery-postgres.ps1` | Registro durable, fallos SQL y analytics |
 | Sistema completo | `./scripts/verify-system.ps1` | Proyecto Compose aleatorio; HTTP, roles, RPC, Kafka, respuesta perdida y reinicios |
 | Contratos | `./scripts/check-contracts.ps1` | Copias Protobuf idénticas |
-| Documentación y scripts | `./scripts/check-portfolio.ps1` | Enlaces locales, JSON OpenAPI y sintaxis PowerShell |
+| Documentación y scripts | `./scripts/check-docs.ps1` | Enlaces locales, JSON OpenAPI y sintaxis PowerShell |
 | Preparación funcional | `./scripts/verify-readiness-probe.ps1` | Fixture Node local: 502 inicial recuperable, 401 rechazado y destino externo bloqueado |
 | Infraestructura | `./scripts/synth.ps1` | Tests de templates y síntesis; no despliega |
 | Emulación acotada | `./scripts/verify-localstack.ps1` | CloudFormation/Secrets Manager ficticios; ejecutar synth antes |
@@ -55,8 +54,6 @@ preparación. No se alteran timeouts productivos para estabilizar fixtures.
 
 El smoke anterior (`compose-smoke.ps1`) y verify-auth-compose siguen disponibles
 para checks específicos, pero la aceptación integral actual es verify-system.ps1.
-Los reportes de R01–R09 tienen alcances históricos; no reinterpretar sus resultados
-como si hubieran probado las funcionalidades añadidas posteriormente.
 
 ## Entorno de desarrollo habitual
 
@@ -109,8 +106,7 @@ H2 es test-only; Flyway administra los cuatro esquemas y JPA usa validate.
 La documentación central de gateway usa springdoc WebFlux UI 3.2.0. Auth conserva
 su dependencia existente 2.6.0, con verificación específica de sus endpoints;
 no se afirma soporte de todas sus funciones. gRPC net.devh 3.1.0.RELEASE se conserva
-con tests de transporte y de los escenarios usados. No modificar versiones por
-compararlas con los reportes anteriores; inspeccionar los POM de cada módulo.
+con tests de transporte y de los escenarios usados. Consultar los POM de cada módulo antes de actualizar dependencias.
 
 La preparación AWS y sus límites están en [aws-deployment.md](aws-deployment.md).
 No ejecutar comandos de despliegue para verificar el entorno local.

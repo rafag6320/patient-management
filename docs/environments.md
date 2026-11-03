@@ -36,8 +36,8 @@ Se aceptan también las propiedades equivalentes de Spring por argumentos u otra
 fuentes de configuración. Las URLs de datasource deben ser PostgreSQL con host
 y nombre de base explícitos; el verificador actual contempla una URL de host
 único. Las credenciales deben estar presentes y el JWT debe tener al menos 32
-bytes UTF-8 para HS256. Reutilizar los secretos existentes mediante el mecanismo
-del entorno; esta entrega no los rota ni cambia.
+bytes UTF-8 para HS256. Los secretos se proporcionan mediante el mecanismo del
+entorno; no guardarlos en archivos versionados.
 
 Los destinos HTTP del gateway son orígenes http/https con host, sin credenciales,
 query string ni fragmento. Los brokers Kafka son una lista host:puerto separada
@@ -56,10 +56,12 @@ No son secretos y no cambian entre perfiles salvo configuración explícita.
 | Patient PostgreSQL | localhost:5433/patient_db | patient-db:5432/patient_db |
 | Auth PostgreSQL | localhost:5434/auth_db | auth-db:5432/auth_db |
 | Billing PostgreSQL | localhost:5435/billing_db | billing-db:5432/billing_db |
+| Analytics PostgreSQL | localhost:5436/analytics_db | analytics-db:5432/analytics_db |
 | Kafka | localhost:9094 | kafka:9092 |
 | Billing gRPC | localhost:9001 | billing-service:9001 |
 | Gateway → auth | http://localhost:4005 | http://auth-service:4005 |
 | Gateway → patient | http://localhost:4000 | http://patient-service:4000 |
+| Gateway → analytics | http://localhost:4002 | http://analytics-service:4002 |
 
 El perfil local presupone que esos servicios estén accesibles en el host. El
 Compose principal no publica patient:4000 ni billing:9001: para combinar clientes
@@ -75,12 +77,12 @@ docker compose up -d --build --wait --wait-timeout 300
 .\scripts\maven.ps1 -Module auth-service spring-boot:run -Dspring-boot.run.profiles=local
 ```
 
-Los perfiles local/docker conservan los valores de desarrollo anteriores; no
+Los perfiles local/docker contienen valores de desarrollo; no
 deben usarse en producción. No se añaden archivos .env con secretos.
 
 ## Seed y H2
 
-El SQL original de auth se mueve sin cambiar su contenido a `db/dev/data.sql`.
+El SQL de desarrollo de auth está en `db/dev/data.sql`.
 Sólo local/docker lo habilitan mediante spring.sql.init. Su condición sigue
 evitando sobreescribir usuarios existentes. El perfil de pruebas lo carga como
 fixture explícito. En prod/sin perfil se usa `spring.sql.init.mode=never`; el
@@ -90,7 +92,7 @@ No se eliminan administradores ni usuarios previamente creados. La separación
 controla futuras ejecuciones del seed; cualquier intervención sobre cuentas
 existentes necesita alcance y autorización propios.
 
-H2 tiene scope test en auth, patient, billing y analytics; se retira spring-boot-h2console de patient.
+H2 tiene scope test en auth, patient, billing y analytics.
 Los JAR ejecutables no deben incluir el driver H2 ni consola. Además, los
 datasources fuera de test deben tener URL PostgreSQL. Activar un nombre de perfil
 no instala el driver ni incorpora los recursos de src/test al artefacto de producción.
@@ -100,8 +102,8 @@ no instala el driver ni incorpora los recursos de src/test al artefacto de produ
 ```powershell
 .\scripts\verify.ps1 -WithContexts
 .\scripts\verify-migrations-postgres.ps1
-.\scripts\verify-auth-compose.ps1 -ProjectName pm-r08-test
-.\scripts\compose-smoke.ps1 -ProjectName pm-r08-full-test
+.\scripts\verify-auth-compose.ps1 -ProjectName pm-auth-check
+.\scripts\compose-smoke.ps1 -ProjectName pm-smoke-check
 ```
 
 Las pruebas de configuración comprueban claves ausentes, puertos/URLs/brokers
@@ -111,12 +113,7 @@ que el seed no se ejecute en prod ni reemplace un hash/rol existente en desarrol
 Los contenedores PostgreSQL de esa suite son efímeros y no usan volúmenes existentes.
 La prueba Compose utiliza su proyecto aislado y conserva sus propios volúmenes.
 
-## Ampliación R11–R19
-
-Analytics incorpora datasource PostgreSQL obligatorio (analytics_db): localhost:5436
-con local y analytics-db:5432 con docker. Usuario/contraseña de desarrollo se
-limitan a esos perfiles. H2 es test-only también en analytics; no se empaqueta.
-Gateway requiere además ANALYTICS_SERVICE_ADDRESS fuera de local/docker.
+## AWS, worker y recursos locales
 
 En AWS se utiliza prod,aws. Patient/analytics requieren KAFKA_USERNAME y
 KAFKA_PASSWORD seguros para el JAAS SCRAM; se inyectan desde Secrets Manager.

@@ -31,5 +31,5 @@ foreach($relative in $files) {
         foreach($diagram in $diagrams){if($diagram.Groups[1].Value -notmatch '^\s*(flowchart|sequenceDiagram)\b'){$failures.Add("Tipo de diagrama no revisado: $relative")}}
     }
 }
-if($failures.Count){$failures | ForEach-Object {Write-Output $_};throw 'Falló la validación del portfolio.'}
+if($failures.Count){$failures | ForEach-Object {Write-Output $_};throw 'Falló la validación de documentación y scripts.'}
 Write-Output 'OK: sintaxis PowerShell, JSON OpenAPI, enlaces locales y bloques Mermaid. Los diagramas requieren además revisión de su renderizado.'

@@ -1,39 +1,33 @@
-# Migraciones PostgreSQL — R07
+# Migraciones PostgreSQL
 
-Estrategia Flyway aprobada por el usuario el 30/10/2026. Cada servicio mantiene
-su propio `db/migration` y su historial `flyway_schema_history` en su base.
-Flyway 12.4.0 está gestionado por Spring Boot 4.1.1; se añaden el starter Flyway
-y su soporte PostgreSQL. Hibernate usa `validate`, no altera el esquema.
+Cada servicio mantiene su propio db/migration y su historial flyway_schema_history
+en su base. Flyway 12.4.0 está gestionado por Spring Boot 4.1.1. Hibernate usa
+validate; no altera el esquema. Analytics utiliza JDBC.
 
-Desde R09, billing también dispone de V1 propia en su base nueva billing_db.
-La versión anterior no persistía cuentas, por lo que no existe un esquema antiguo
-de billing que adoptar automáticamente ni se importan IDs simulados `12345`.
-Una billing_db desconocida y no vacía sin historial se rechaza; requiere revisión
-antes de cualquier adopción. No se modificaron las V1 de patient/auth.
-El plugin Maven de mantenimiento descrito abajo está configurado para patient y
-auth; billing aplica sus migraciones al arrancar mediante el starter de Flyway.
+## Esquemas actuales
 
-## Bases nuevas
+| Servicio | Migraciones | Contenido |
+| --- | --- | --- |
+| patient | V1, V2 y V3 | Pacientes, trabajo durable y observabilidad |
+| auth | V1 | Usuarios |
+| billing | V1 | Cuentas con patientId único |
+| analytics | V1 | Identidades procesadas y cuarentena |
 
-Al arrancar patient/auth, Flyway aplica V1 y Hibernate valida después. Las
-migraciones sólo crean las tablas actuales y sus restricciones, sin nuevos
-campos ni cambios de credenciales. Desde R08, el seed condicional de auth se
-conserva en `db/dev/data.sql` y sólo se habilita en local/docker y fixtures de
-test. No se modificó su contenido. Sin perfil y en prod no se carga.
+En bases nuevas se aplica todo el historial al arrancar. El seed condicional de
+auth se conserva en db/dev/data.sql, habilitado sólo con local/docker y fixtures
+de test. Sin perfil y en prod no se carga.
 
-Se mantienen deshabilitados el baseline automático y `clean`. Si una base ya
-tiene tablas pero no historial, la aplicación se niega a adoptarla automáticamente.
-Por eso un `docker compose up --build` sobre volúmenes antiguos puede detener
-patient/auth hasta completar el procedimiento siguiente. No borrar los volúmenes.
+Se mantienen deshabilitados el baseline automático y clean. Una base poblada sin
+historial se rechaza. No borrar volúmenes para saltar esa protección.
 
 ## Adopción de bases existentes
 
-La verificación inicial se realizó con datos sintéticos y copias de esquemas
-generados por Hibernate en PostgreSQL 16 efímero. El 31/10/2026 se adoptaron
-también las bases anteriores de esta instalación Compose, tras backup,
-restauración y validación en copias; evidencia en
-[compose-troubleshooting.md](compose-troubleshooting.md).
-Antes de aplicarlo a otra base real:
+El procedimiento de adopción contempla esquemas V1 anteriores de patient y auth.
+Ambos tienen preflight SQL y plugin Maven de mantenimiento. Billing y analytics
+no tienen un procedimiento automático de importación de esquemas anteriores;
+una base desconocida necesita revisión específica.
+
+Antes de adoptar patient o auth:
 
 1. Detener las escrituras del servicio propietario y confirmar host, puerto,
    nombre de base, usuario y esquema. Patient y auth se adoptan por separado.
@@ -78,12 +72,13 @@ obligatoria. No establecer `baseline-on-migrate=true`.
 
 ## Evolución y recuperación
 
-- Una migración aplicada es inmutable. Añadir V2, V3, etc.; no editar V1 ni cambiar
-  checksums con `repair` para ocultar una discrepancia.
-- Las migraciones SQL de esta entrega se ejecutan transaccionalmente en PostgreSQL.
+- Una migración aplicada es inmutable. Añadir una versión posterior; no editar
+  migraciones anteriores ni cambiar checksums con `repair` para ocultar una discrepancia.
+- Las migraciones SQL actuales se ejecutan transaccionalmente en PostgreSQL.
   Si fallan, inspeccionar el log y el historial. Corregir un script únicamente si
   se confirmó que nunca quedó aplicado; volver a ejecutar migrate/validate en la
-  copia antes del destino. Se probó el rollback de DDL y preservación de filas.
+  copia antes del destino. Los tests de migración comprueban rollback de DDL y
+  preservación de filas.
 - Si una versión ya se aplicó, corregir hacia adelante con una nueva migración.
   Si la recuperación exige restaurar un backup, hacerlo en una base nueva,
   verificarla y planificar el cambio de destino; no sobrescribir la base actual
@@ -111,22 +106,13 @@ Referencias: [inicialización en Spring Boot](https://docs.spring.io/spring-boot
 [baseline de Flyway](https://documentation.red-gate.com/flyway/reference/commands/baseline),
 [baseline automático](https://documentation.red-gate.com/flyway/reference/configuration/flyway-namespace/flyway-baseline-on-migrate-setting).
 
-## Evolución R12–R17
+## Trabajo durable y datos históricos
 
-Patient añade V2__registration_work.sql y V3__registration_observability.sql.
-V1 permanece intacta: una base nueva recibe las tres; una base adoptada en 1
-aplica V2/V3 después del preflight/baseline manual original. Ese preflight es
-para adoptar el esquema V1, no para validar el esquema extendido después de V2.
-No se cambia el estado de pacientes históricos ni se los encola retroactivamente.
+Patient V2__registration_work.sql y V3__registration_observability.sql se aplican
+después de V1 o del baseline manual 1. El preflight es para adoptar V1, no para
+validar el esquema extendido. Las migraciones no cambian pacientes históricos ni
+los encolan retroactivamente.
 
-Analytics incorpora su propia V1__analytics_result.sql en analytics_db, sin datos
-persistentes anteriores que adoptar automáticamente. Tablas de resultado y
-cuarentena son propias; no se accede al esquema de patient/billing. Una base
-no vacía sin historial se rechaza, igual que las demás.
-
-Se probaron convergencia/adopción y rollback con el esquema extendido. El test
-transaccional usa una V99 temporal nunca aplicada, para no reutilizar versiones
-reales. Ninguna migración aplicada del repositorio se modifica para esos tests.
-La política de snapshots, retención y reanudación del trabajo está documentada
-en recovery-operations.md. Esos ensayos no ejecutaron mantenimiento sobre bases
-personales; la adopción posterior de esta instalación se registra arriba.
+La política actual de snapshots y la reanudación están en
+[recuperación y operación](recovery-operations.md). Los ensayos de migraciones
+usan bases efímeras y datos sintéticos, no instalaciones del desarrollador.

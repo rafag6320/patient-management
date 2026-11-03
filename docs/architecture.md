@@ -1,9 +1,10 @@
 # Arquitectura actual
 
-## Alcance y evidencia
-Este documento describe la inspección del 28/10/2026 y los cambios de R05–R19
-verificados localmente el 30/10/2026.
-No certifica el funcionamiento del sistema desplegado.
+## Alcance
+
+Sistema educativo de gestión de pacientes, cuentas billing y analytics de altas.
+La ejecución local se realiza con Docker Compose. AWS está preparado mediante
+CDK, sin despliegue real verificado.
 
 ## Organización
 Existen cinco aplicaciones Spring Boot independientes:
@@ -77,7 +78,7 @@ Los contratos Protobuf están duplicados entre módulos y se comparan automátic
 Patient utiliza la fábrica Kafka autoconfigurada por Spring Boot para aplicar
 realmente los límites, acks y TLS/SCRAM declarados en sus propiedades.
 
-## Validación y conflictos de pacientes (R06)
+## Validación y conflictos de pacientes
 
 El DTO valida fechas de calendario con formato yyyy-MM-dd y DNI compuesto por
 dígitos dentro del rango no negativo de Integer (0 a 2147483647), conservando
@@ -106,8 +107,8 @@ las validaciones y constraints por sí solas no crean atomicidad distribuida.
 
 ## Consistencia del alta
 
-R11–R12 implementan D18/D19: una transacción local guarda paciente y registro
-registration_work con snapshot inicial, hashes de idempotencia, estado billing e
+Una transacción local guarda paciente y registro registration_work con snapshot
+inicial, hashes de idempotencia, estado billing e
 intención de evento. La RPC se ejecuta fuera de SQL, con deadline configurable de
 2s y sin reintentos dentro de la solicitud. Se comprueban success e ID UUID.
 
@@ -122,8 +123,8 @@ Un dispatcher reclama trabajo con lease de 45s y token, limita concurrencia por
 instancia y confirma avances condicionados al propietario. Tras fallos/reinicio,
 repite la RPC con el mismo patientId y publica sólo tras confirmar billing.
 Kafka usa clave patientId y snapshot inmutable; ack incierto permite redelivery.
-R13–R14 deduplican el efecto en PostgreSQL de analytics por (eventType,patientId)
-antes de confirmar el offset. No existe atomicidad distribuida ni procesamiento
+Analytics deduplica el efecto en PostgreSQL por (eventType,patientId) antes de
+confirmar el offset. No existe atomicidad distribuida ni procesamiento
 exactamente una vez. Revisión operativa y límites en [recovery-operations.md](recovery-operations.md).
 
 ## Seguridad
@@ -131,7 +132,7 @@ Auth verifica passwords con BCrypt y firma JWT HS256.
 Gateway delega su validación a auth.
 Auth rechaza JWT vacíos, malformados, expirados o con firma inválida. El gateway
 rechaza encabezados Bearer ausentes o vacíos sin contactar al backend.
-D21 aplica permisos en gateway: ADMIN tiene CRUD y analytics; USER sólo lectura.
+El gateway aplica permisos: ADMIN tiene CRUD y analytics; USER sólo lectura.
 Auth comunica roles verificados en la respuesta de /validate; el gateway ignora
 encabezados de rol del cliente. Los servicios internos deben permanecer privados.
 Los valores de desarrollo están en perfiles local/docker. H2 es dependencia
@@ -156,14 +157,14 @@ La guía de ejecución y las precauciones para contenedores antiguos están en
 
 ## Infraestructura CDK
 
-R18 genera tres templates: ECR, candidato AWS y emulación acotada. El candidato
+CDK genera tres templates: ECR, candidato AWS y emulación acotada. El candidato
 prepara VPC, cuatro RDS privadas, MSK con TLS/SCRAM, ECS/Fargate/Cloud Map, secretos
 por referencias y ALB HTTPS. Usa digests obligatorios, backups y protección de
 bases. Tests de template y síntesis local no verifican despliegue efectivo.
 
 LocalStack 4.14.0 se prueba en un contenedor nuevo sólo con CloudFormation y un
-secreto ficticio. No se afirma emulación de RDS/MSK/ECS. R19 prepara imágenes y
-procedimiento de revisión/publicación/migración; todo despliegue externo queda
+secreto ficticio. No se afirma emulación de RDS/MSK/ECS. Los scripts preparan
+imágenes y procedimientos de revisión/publicación/migración; todo despliegue externo queda
 pendiente de aprobación y de completar entradas del entorno.
 Ver [aws-deployment.md](aws-deployment.md).
 
@@ -176,9 +177,9 @@ La autorización sólo protege gateway; no hay mTLS HTTP/gRPC interno. No se
 sincronizan actualizaciones/eliminaciones con billing ni analytics. La retención
 física de snapshots requiere una política posterior antes de cualquier purga.
 
-El workflow CI se ejecutó y aprobó en GitHub para d197f7b; sus reportes se conservan
-como artefacto. AWS continúa siendo un candidato sin desplegar. Evidencia en
-[verification-r11-r19.md](verification-r11-r19.md).
+El workflow [Verify backend](../.github/workflows/verify.yml) ejecuta los checks
+y conserva reportes por revisión. Las notas de release enlazan la ejecución
+correspondiente a cada versión publicada.
 
 ## Pruebas locales
 
@@ -191,7 +192,6 @@ en loopback y puertos aleatorios, en perfiles principal y prod.
 El módulo integration-tests excluye los tests HTTP por defecto y requiere el
 perfil `external-tests` y destinos explícitos para ejecutarlos.
 La aceptación integral actual es verify-system.ps1 y complementa los contextos
-con PostgreSQL, Kafka y reinicios reales. La demo de portfolio usa un proyecto propio;
+con PostgreSQL, Kafka y reinicios reales. La demo usa un proyecto propio;
 ver [demo.md](demo.md). La preparación funcional de demo/aceptación comprueba login
 y lectura por gateway antes de iniciar aserciones estrictas, además de los healthchecks.
-Los reportes R01–R19 son evidencia histórica fechada.
