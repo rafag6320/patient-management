@@ -26,7 +26,14 @@ function Compose([Parameter(ValueFromRemainingArguments=$true)][string[]]$Argume
     $output = & docker compose @script:composeArgs @Arguments 2>&1
     # Keep diagnostics local; only the explicit sanitized report is uploaded to CI.
     if ($Arguments[0] -ne 'config') { $output | Out-File (Join-Path $directory 'compose.log') -Append -Encoding utf8 }
-    if ($LASTEXITCODE -ne 0) { throw "Compose falló en '$($Arguments[0])'. Ver .verification/demo/compose.log." }
+    if ($LASTEXITCODE -ne 0) {
+        if ($Arguments[0] -eq 'up') {
+            # Private diagnostics only. Never include application logs in the public demo report.
+            & docker compose @script:composeArgs logs --no-color --tail 80 2>&1 |
+                Out-File (Join-Path $directory 'startup-diagnostics.log') -Encoding utf8
+        }
+        throw "Compose falló en '$($Arguments[0])'. Ver .verification/demo/compose.log."
+    }
     return $output
 }
 function Assert-Owned {
@@ -142,10 +149,11 @@ try {
         Step "Iniciando $($state.project), sin utilizar volúmenes del entorno habitual."
         $null=Compose @('build')
         # Cold database migrations share a short JDBC socket timeout with runtime checks.
-        # Bring dependencies and billing up first instead of competing with all JVMs.
+        # Start JVMs in order so cold migrations do not compete with every application.
         $null=Compose @('up','-d','--wait','--wait-timeout','300','patient-db','auth-db','billing-db','analytics-db','kafka')
-        $null=Compose @('up','-d','--wait','--wait-timeout','300','billing-service')
-        $null=Compose @('up','-d','--wait','--wait-timeout','300')
+        foreach ($service in @('billing-service','auth-service','patient-service','analytics-service','api-gateway')) {
+            $null=Compose @('up','-d','--wait','--wait-timeout','300',$service)
+        }
         Assert-Owned
         $page=Http 'GET' '/swagger-ui/index.html'
         Expect $page 200 'Swagger UI'
