@@ -12,7 +12,7 @@ persistence, failure recovery, and automated verification across service boundar
 Billing creates accounts; it does not implement invoices, payments, or balances.
 All demo data is synthetic.
 
-## What you can demonstrate
+## Features
 
 - Patient CRUD with validation, database uniqueness constraints and controlled errors.
 - JWT login and gateway authorization: ADMIN can write; USER can read.
